@@ -1,3 +1,6 @@
+# Main Executable
+Gemfc_nrm
+
 # Object files
 *.o
 *.ko
