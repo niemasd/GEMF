@@ -12,6 +12,7 @@
 #else
 #include <sys/time.h>
 #endif
+#include <stddef.h>
 
 typedef char LINE[MAX_LINE_LEN];
 typedef long long LONG;
