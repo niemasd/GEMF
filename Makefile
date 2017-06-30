@@ -11,7 +11,7 @@ all: $(TARGET)
 
 $(TARGET): gemfc_nrm.c nrm.o para.o common.o
 	rm -rf $(TARGET)
-	$(CC) $(CFLAGS) -o $(TARGET) gemfc_nrm.c nrm.o para.o common.o
+	$(CC) $(CFLAGS) -o $(TARGET) gemfc_nrm.c nrm.o para.o common.o -lm
 
 nrm.o:  nrm.c nrm.h
 	$(CC) $(CFLAGS) -c nrm.c
