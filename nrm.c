@@ -1,6 +1,7 @@
 #include "nrm.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <math.h>
 #include <float.h>
 #include <string.h>
