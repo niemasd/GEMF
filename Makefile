@@ -5,7 +5,7 @@ CC = gcc
 #  -g    adds debugging information to the executable file
 #  -Wall turns on most, but not all, compiler warnings
 #CFLAGS = -g -Wall
-CFLAGS = -Wall
+CFLAGS = -Wall -std=c99 -O3
 TARGET = GEMF
 all: $(TARGET)
 
