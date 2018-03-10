@@ -11,8 +11,9 @@
  * process configuration
  * Futing Fan
  * Kansas State University
- * Last Modified: Jan 2016
- * Copyright (c) 2016, Futing Fan. All rights reserved. 
+ * Updates by Niema Moshiri (UC San Diego)
+ * Last Modified: March 2018
+ * Copyright (c) 2016, Futing Fan. All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted
  */
@@ -62,7 +63,7 @@ int item_count( FILE* p_file, char* target_section){
 
     ret= locate_section_only( p_file, target_section);
     if( ret< 0) return ret;
-    while( fgetline( p_file, tmp_str, MAX_LINE_LEN)){ 
+    while( fgetline( p_file, tmp_str, MAX_LINE_LEN)){
         if( tmp_str[0]== '#') continue;
         if( tmp_str[0]== '[') break;
         ret++;
@@ -89,7 +90,9 @@ int locate_section_only( FILE* p_file, char* target_section){
         }
     }
     if( find_flag!= 1){
-        printf( "missing section %s\n", target_section);
+        if( strcmp(target_section,"[RANDOM_SEED]") != 0){
+            printf( "missing section %s\n", target_section);
+        }
         return -1;
     }
     return 0;
@@ -104,13 +107,16 @@ int locate_section_only( FILE* p_file, char* target_section){
  */
 int locate_section( FILE* p_file, char* target_section){
     if( item_count( p_file, target_section)<= 0){
+        if( strcmp(target_section,"[RANDOM_SEED]") == 0){
+            return -1; //allow for no specification of random seed (use time)
+        }
         printf("missing config item in section[%s]\n", target_section);
         exit( - 1);
     }
     locate_section_only( p_file, target_section);
     return 0;
 }
-/* 
+/*
  *count column number in the first row of target file
  *
  *input:  FILE* p_file     [ file pointer]
@@ -128,7 +134,7 @@ int fcolumn_count( FILE* p_file){
     }
     return i/2;
 }
-/* 
+/*
  *count column number in input string
  *
  *input:  char* string     [ file pointer]
@@ -239,7 +245,7 @@ int analysis_network(FILE* fil_para, Graph* graph){
  *return: int   [0: success; <0: failure]
  */
 int initial_con(FILE* fil_sts, Graph* graph, Status* sts){
-    //MODE 1. full list mode 
+    //MODE 1. full list mode
     /*
      *e.g. for 3 compartments, 10nodes
      *{
@@ -258,7 +264,7 @@ int initial_con(FILE* fil_sts, Graph* graph, Status* sts){
      */
     //MODE 2. statistic mode
     /*
-     *e.g. for 3 compartments, 10nodes 
+     *e.g. for 3 compartments, 10nodes
      *
      *{
          6 2 2
@@ -279,7 +285,7 @@ int initial_con(FILE* fil_sts, Graph* graph, Status* sts){
      *}
      */
     size_t li, lj, dynamic, line_num, max_compartmet_value, ns;
-    int j, k, val; 
+    int j, k, val;
     NINT count, max_compartment, ni;
     LINE ch;
     sts->init_lst= (size_t*)malloc(sizeof(size_t)*graph->_e);
@@ -302,7 +308,7 @@ int initial_con(FILE* fil_sts, Graph* graph, Status* sts){
     else if( line_num== 1){
         //MODE 2.
         LOG(2, __FILE__, __LINE__, "Status file mode [2]\n");
-        srand((unsigned int)time(NULL));
+        srand((unsigned int)sts->random_seed);
         k= 0;
         count= 0;
         rewind( fil_sts);
@@ -410,7 +416,7 @@ int fgetline(FILE* file, char* line, size_t limit){
         c=fgetc( file);
     }
     if( limit== i+1){
-        printf("line truncated, exceeding max length[%zu]\n", limit); 
+        printf("line truncated, exceeding max length[%zu]\n", limit);
         line[i]='\0';
         while( (c= fgetc( file))!= EOF&& c!='\n');
         return -1;
@@ -460,7 +466,7 @@ int fcheck_config(FILE* file, char* target_section, size_t row, size_t column){
     while( fget_next_item( file, line, MAX_LINE_LEN)){
         _row++;
         if( column> 0&& column_count( line)!= column){
-            printf("section%s line[%zu] column number [%zu] error, should be[%zu]\n", target_section, _row, 
+            printf("section%s line[%zu] column number [%zu] error, should be[%zu]\n", target_section, _row,
                         column_count( line), column);
             return -1;
         }
@@ -495,8 +501,11 @@ int skip_top_comment(FILE* file, char c){
 }
 LONG getValInt( FILE* fil, char* section, int echo){
     LONG ret;
-    locate_section( fil, section);
-    fscanf(fil, " %lld", &ret);
+    if( locate_section( fil, section)){
+        ret = (LONG)time(NULL);
+    } else {
+        fscanf(fil, " %lld", &ret);
+    }
     if( echo){
         printf("%s\t\t[%lld]\n", section, ret);
     }
@@ -611,7 +620,7 @@ double*** getValMatrixLst( FILE* fil, char * section, size_t dim, size_t len, si
         for( j= skip; j< dim+ skip; j++){
             mtxLst[i][j]= (double*)malloc(sizeof(double)*(dim+ skip+ 1));
             if( mtxLst[i][j]== NULL){
-                printf("Memory allocation failure for edge based transisition matrix layer[%zu], row[%zu], size[%zu]\n", i, j, 
+                printf("Memory allocation failure for edge based transisition matrix layer[%zu], row[%zu], size[%zu]\n", i, j,
                                                                                 sizeof(double*)*(dim+ skip));
                 exit( - 1);
             }

@@ -86,9 +86,11 @@ typedef struct
     NINT _node_e;
     //1 by _node_e list, initial status for each node
     size_t *init_lst;
-    //1 by (_s+M) array 
+    //1 by (_s+M) array
     //the population of each compartment
     NINT *init_cnt;
+    //random number seed
+    int random_seed;
 } Status;
 typedef struct
 {
@@ -130,7 +132,7 @@ typedef struct{
 } Heap;
 
 double gettimenow();
- 
+
 extern int _LOGLVL_;
 int LOG(int loglvl, const char* file, int line, char* format, ...);
 //dump graph

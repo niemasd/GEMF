@@ -6,8 +6,9 @@
  * process configuration
  * Futing Fan
  * Kansas State University
- * Last Modified: June 2016
- * Copyright (c) 2016, Futing Fan. All rights reserved. 
+ * Updates by Niema Moshiri (UC San Diego)
+ * Last Modified: March 2018
+ * Copyright (c) 2016, Futing Fan. All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted
  */
@@ -40,14 +41,14 @@ int locate_section_only( FILE* p_file, char* target_section);
  */
 int locate_section( FILE* p_file, char* target_section);
 
-/* 
+/*
  *count column number in the first row of target file
  *
  *input:  FILE* p_file     [ file pointer]
  *return: int   [number of columns in first row]
  */
 int fcolumn_count( FILE* p_file);
-/* 
+/*
  *count column number in input string
  *
  *input:  char* string     [ file pointer]

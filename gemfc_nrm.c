@@ -10,14 +10,15 @@
  * main function of GEMF in C language
  * Futing Fan
  * Kansas State University
- * Last Modified: Jan 2016
- * Copyright (c) 2016, Futing Fan. All rights reserved. 
+ * Updates by Niema Moshiri (UC San Diego)
+ * Last Modified: March 2018
+ * Copyright (c) 2016, Futing Fan. All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted
  */
 
 /*
- * main 
+ * main
  */
 int _LOGLVL_;
 void init_graph(Graph* graph, int echo);
@@ -238,7 +239,7 @@ void load_graph(FILE* fil_para, Graph* graph){
         skip_top_comment( fil_dat, '#');
         //weighted
         if( graph->weighted){
-            LOG(2, __FILE__, __LINE__, "Read weighted network\n"); 
+            LOG(2, __FILE__, __LINE__, "Read weighted network\n");
             for ( li= 0; li< graph->E[layer]; li++) {
                 if (!(li % 10000000)&& li) {
                     time_print("[", gettimenow() - t0, " ]\t");
@@ -269,7 +270,7 @@ void load_graph(FILE* fil_para, Graph* graph){
         }
         //unweighted
         else{
-            LOG(2, __FILE__, __LINE__, "Read unweighted network\n"); 
+            LOG(2, __FILE__, __LINE__, "Read unweighted network\n");
             for ( li= 0; li< graph->E[layer]; li++) {
                 if (!(li % 10000000)&& li) {
                     time_print("[", gettimenow() - t0, " ]\t");
@@ -368,7 +369,7 @@ void init_para(FILE* fil_para, Graph* graph, Transition* tran, Status* sts, Run*
 
     //read in directed flag
     if( getValInt( fil_para, "[DIRECTED]", echo)> 0){
-        graph->directed= 1; 
+        graph->directed= 1;
     }
     else{
         graph->directed= 0;
@@ -388,6 +389,9 @@ void init_para(FILE* fil_para, Graph* graph, Transition* tran, Status* sts, Run*
 
     //read in sample size
     run->interval_num = (size_t)getValInt( fil_para, "[INTERVAL_NUM]", echo);
+
+    //read in random number seed
+    sts->random_seed = (size_t)getValInt( fil_para, "[RANDOM_SEED]", echo);
 
     //print inducer for signle simulation if presented and non zero
     run->show_inducer= 0;

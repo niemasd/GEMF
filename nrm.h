@@ -7,8 +7,9 @@
  * nrm.h of GEMF in C language
  * Futing Fan
  * Kansas State University
- * Last Modified: Jun 2016
- * Copyright (c) 2016, Futing Fan. All rights reserved. 
+ * Updates by Niema Moshiri (UC San Diego)
+ * Last Modified: March 2018
+ * Copyright (c) 2016, Futing Fan. All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted
  */
@@ -36,4 +37,4 @@ size_t weighed_rat_rand( double* rat_lst, size_t len);
 int get_next_evt(double* p_raw_rat_lst, double** p_inducer_cal_lst, Graph* graph, Transition* tran, Status* sts, Event *evt, Heap* heap);
 
 #endif
-    
+

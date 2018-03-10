@@ -10,8 +10,9 @@
  * nrm.c of GEMF in C language
  * Futing Fan
  * Kansas State University
- * Last Modified: Jun 2016
- * Copyright (c) 2016, Futing Fan. All rights reserved. 
+ * Updates by Niema Moshiri (UC San Diego)
+ * Last Modified: March 2018
+ * Copyright (c) 2016, Futing Fan. All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted
  */
@@ -60,7 +61,7 @@ int nrm(Graph* graph, Transition* tran, Status* sts, Run* run){
         dump_graph(graph);
         dump_status(sts);
     }
-    srand((unsigned int)time(NULL));
+    srand((unsigned int)sts->random_seed);
     //start timer
     timer0= gettimenow();
 
@@ -87,7 +88,7 @@ int nrm(Graph* graph, Transition* tran, Status* sts, Run* run){
     init_index(graph);
 
 
-    //calculate initial rate Ri for i in N 
+    //calculate initial rate Ri for i in N
     R= get_rat_lst( graph, tran, sts, &p_raw_rat_lst, p_inducer_cal_lst);
 
     //open output file
@@ -424,7 +425,7 @@ int get_next_evt(double* p_raw_rat_lst, double** p_inducer_cal_lst, Graph* graph
     }
     edgeb_tmp_rat_lst= (double*)malloc(sizeof(double)*(graph->L*(sts->M+sts->_s+ 1)))+ 1;
     if( edgeb_tmp_rat_lst== NULL){
-        printf("Memory allocation failure for temp edge based rate sumation list, size[%zu]\n", 
+        printf("Memory allocation failure for temp edge based rate sumation list, size[%zu]\n",
                                         sizeof(double)*(sts->M*graph->L+ sts->_s+ 1));
         exit( - 1);
     }
@@ -683,7 +684,7 @@ void heap_swap(Heap* heap, NINT a, NINT b){
     heap->reaction[a].n= heap->reaction[b].n;
     heap->reaction[a].t= heap->reaction[b].t;
     heap->reaction[b].n= tr.n;
-    heap->reaction[b].t= tr.t; 
+    heap->reaction[b].t= tr.t;
     heap->idx[heap->reaction[a].n]= a;
     heap->idx[heap->reaction[b].n]= b;
 }
