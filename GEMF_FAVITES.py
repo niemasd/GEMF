@@ -14,6 +14,7 @@ import argparse
 DEFAULT_FN_GEMF_NETWORK = 'network.txt'
 DEFAULT_FN_GEMF_OUT = 'output.txt'
 DEFAULT_FN_GEMF_PARA = 'para.txt'
+DEFAULT_FN_GEMF2ORIG = 'gemf2orig.json'
 
 def parse_args():
     '''
@@ -63,7 +64,7 @@ def check_args(args):
     if isdir(args.output) or isfile(args.output):
         raise ValueError("Output directory exists: %s" % args.output)
 
-def prepare_outdir(outdir, para_fn=DEFAULT_FN_GEMF_PARA, network_fn=DEFAULT_FN_GEMF_NETWORK, out_fn=DEFAULT_FN_GEMF_OUT):
+def prepare_outdir(outdir, para_fn=DEFAULT_FN_GEMF_PARA, network_fn=DEFAULT_FN_GEMF_NETWORK, gemf2orig_fn=DEFAULT_FN_GEMF2ORIG, out_fn=DEFAULT_FN_GEMF_OUT):
     '''
     Prepare GEMF output directory
 
@@ -74,6 +75,8 @@ def prepare_outdir(outdir, para_fn=DEFAULT_FN_GEMF_PARA, network_fn=DEFAULT_FN_G
 
         `network_fn` (`str`): File name of GEMF network file
 
+        `gemf2orig_fn` (`str`): File name of "GEMF to original node label" mapping file
+
         `out_fn` (`str`): File name of GEMF output file
 
     Returns:
@@ -81,15 +84,18 @@ def prepare_outdir(outdir, para_fn=DEFAULT_FN_GEMF_PARA, network_fn=DEFAULT_FN_G
 
         `file`: Write-mode file object to GEMF network file
 
+        `file`: Write-mode file object to "GEMF to original node label" mapping file
+
         `file`: Write-mode file object to GEMF output file
     '''
     makedirs(outdir)
     para_f = open('%s/%s' % (outdir, para_fn), 'w')
     network_f = open('%s/%s' % (outdir, network_fn), 'w')
+    gemf2orig_f = open('%s/%s' % (outdir, gemf2orig_fn), 'w')
     out_f = open('%s/%s' % (outdir, out_fn), 'w')
-    return para_f, network_f, out_f
+    return para_f, network_f, gemf2orig_f, out_f
 
-def load_contact_network(contact_network_fn, network_f):
+def load_contact_network(contact_network_fn, network_f, gemf2orig_f):
     '''
     Load contact network and convert to GEMF network format
 
@@ -97,6 +103,8 @@ def load_contact_network(contact_network_fn, network_f):
         `contact_network_fn` (`str`): Path to input contact network (FAVITES format)
 
         `network_f` (`file`): Write-mode file object to GEMF network file
+
+        `gemf2orig_f` (`file`): Write-mode file object to "GEMF to original node label" mapping file
 
     Returns:
         `dict`: A mapping from node label to node number
@@ -138,7 +146,8 @@ def load_contact_network(contact_network_fn, network_f):
             raise ValueError("Invalid contact network file: %s" % contact_network_fn)
 
     # finish up and return
-    network_f.close()
+    gemf2orig_f.write(str({num:node for num, node in enumerate(num2node)}))
+    gemf2orig_f.close(); network_f.close()
     return node2num, num2node
 
 # main function
@@ -146,8 +155,8 @@ def main():
     # parse user args and prepare run
     args = parse_args()
     check_args(args)
-    para_f, network_f, out_f = prepare_outdir(args.output)
-    node2num, num2node = load_contact_network(args.contact_network, network_f)
+    para_f, network_f, gemf2orig_f, out_f = prepare_outdir(args.output)
+    node2num, num2node = load_contact_network(args.contact_network, network_f, gemf2orig_f)
 
 # execute main function
 if __name__ == "__main__":
