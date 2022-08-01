@@ -162,7 +162,7 @@ def create_gemf_network(contact_network_fn, network_f, node2num_f):
             raise ValueError("Invalid contact network file: %s" % contact_network_fn)
 
     # finish up and return
-    node2num_f.write(str(node2num)); node2num_f.close(); network_f.close()
+    node2num_f.write(str(node2num)); node2num_f.write('\n'); node2num_f.close(); network_f.close()
     return node2num, num2node
 
 def create_gemf_status(initial_states_fn, status_f, state2num_f, node2num):
@@ -200,7 +200,6 @@ def create_gemf_status(initial_states_fn, status_f, state2num_f, node2num):
         status_f.write('%d\n' % s_num)
 
     # finish up and return
-    #state2num_f.write(str(state2num)); state2num_f.close() # TODO MOVE TO create_gemf_para
     status_f.close()
     return state2num, num2state
 
@@ -232,7 +231,8 @@ def create_gemf_para(rates_fn, para_f, state2num_f, state2num, num2state):
             try:
                 by_s_num = state2num[by_s]
             except KeyError:
-                by_s_num = len(num2state); state2num[by_s] = by_s_num; num2state.append(by_s); INDUCERS.add(by_s_num)
+                by_s_num = len(num2state); state2num[by_s] = by_s_num; num2state.append(by_s)
+            INDUCERS.add(by_s_num)
         if by_s_num not in RATE:
             RATE[by_s_num] = dict()
         if from_s_num not in RATE[by_s_num]:
@@ -240,7 +240,7 @@ def create_gemf_para(rates_fn, para_f, state2num_f, state2num, num2state):
         if to_s_num in RATE[by_s_num][from_s_num]:
             raise ValueError("Duplicate transition encountered: from '%s' to '%s' by '%s'" % (from_s, to_s, by_s))
         RATE[by_s_num][from_s_num][to_s_num] = r
-    state2num_f.write(str(state2num)); state2num_f.close(); NUM_STATES = len(state2num)
+    state2num_f.write(str(state2num)); state2num_f.write('\n'); state2num_f.close(); NUM_STATES = len(state2num)
 
     # write nodal transition matrix (by_state == None)
     para_f.write("[NODAL_TRAN_MATRIX]\n")
@@ -250,6 +250,19 @@ def create_gemf_para(rates_fn, para_f, state2num_f, state2num, num2state):
         else:
             rates = ['0']*NUM_STATES
         para_f.write("%s\n" % '\t'.join(rates))
+    para_f.write('\n')
+
+    # write edged transition matrix (by_state != None)
+    para_f.write("[EDGED_TRAN_MATRIX]\n")
+    for s_by in sorted(INDUCERS):
+        for s_from in range(NUM_STATES):
+            if s_from in RATE[s_by]:
+                rates = [str(RATE[s_by][s_from][s_to]) if s_to in RATE[s_by][s_from] else '0' for s_to in range(NUM_STATES)]
+            else:
+                rates = ['0']*NUM_STATES
+            para_f.write("%s\n" % '\t'.join(rates))
+        para_f.write('\n')
+    para_f.write('\n')
 
 def main():
     '''
