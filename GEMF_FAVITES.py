@@ -33,8 +33,12 @@ def check_args(args):
     if isdir(args.output) or isfile(args.output):
         raise ValueError("Output directory exists: %s" % args.output)
 
-# main content
-if __name__ == "__main__":
+# main function
+def main():
     # parse user args and prepare run
     args = parse_args()
     check_args(args)
+
+# execute main function
+if __name__ == "__main__":
+    main()
