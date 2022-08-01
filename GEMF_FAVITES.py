@@ -12,9 +12,11 @@ import argparse
 
 # defaults
 DEFAULT_FN_GEMF_NETWORK = 'network.txt'
+DEFAULT_FN_GEMF_NODE2NUM = 'node2num.txt'
 DEFAULT_FN_GEMF_OUT = 'output.txt'
 DEFAULT_FN_GEMF_PARA = 'para.txt'
-DEFAULT_FN_GEMF2ORIG = 'gemf2orig.json'
+DEFAULT_FN_GEMF_STATE2NUM = 'state2num.txt'
+DEFAULT_FN_GEMF_STATUS = 'status.txt'
 
 def parse_args():
     '''
@@ -64,7 +66,7 @@ def check_args(args):
     if isdir(args.output) or isfile(args.output):
         raise ValueError("Output directory exists: %s" % args.output)
 
-def prepare_outdir(outdir, para_fn=DEFAULT_FN_GEMF_PARA, network_fn=DEFAULT_FN_GEMF_NETWORK, gemf2orig_fn=DEFAULT_FN_GEMF2ORIG, out_fn=DEFAULT_FN_GEMF_OUT):
+def prepare_outdir(outdir, para_fn=DEFAULT_FN_GEMF_PARA, network_fn=DEFAULT_FN_GEMF_NETWORK, node2num_fn=DEFAULT_FN_GEMF_NODE2NUM, status_fn=DEFAULT_FN_GEMF_STATUS, state2num_fn=DEFAULT_FN_GEMF_STATE2NUM, out_fn=DEFAULT_FN_GEMF_OUT):
     '''
     Prepare GEMF output directory
 
@@ -75,7 +77,11 @@ def prepare_outdir(outdir, para_fn=DEFAULT_FN_GEMF_PARA, network_fn=DEFAULT_FN_G
 
         `network_fn` (`str`): File name of GEMF network file
 
-        `gemf2orig_fn` (`str`): File name of "GEMF to original node label" mapping file
+        `node2num_fn` (`str`): File name of "node label to GEMF number" mapping file
+
+        `status_fn` (`str`): File name of GEMF status file
+
+        `state2num_fn` (`str`): File name of "state label to GEMF number" mapping file
 
         `out_fn` (`str`): File name of GEMF output file
 
@@ -86,16 +92,22 @@ def prepare_outdir(outdir, para_fn=DEFAULT_FN_GEMF_PARA, network_fn=DEFAULT_FN_G
 
         `file`: Write-mode file object to "GEMF to original node label" mapping file
 
+        `file`: Write-mode file object to GEMF status file
+
+        `file`: Write-mode file object to "state label to GEMF number" mapping file
+
         `file`: Write-mode file object to GEMF output file
     '''
     makedirs(outdir)
     para_f = open('%s/%s' % (outdir, para_fn), 'w')
     network_f = open('%s/%s' % (outdir, network_fn), 'w')
-    gemf2orig_f = open('%s/%s' % (outdir, gemf2orig_fn), 'w')
+    node2num_f = open('%s/%s' % (outdir, node2num_fn), 'w')
+    status_f = open('%s/%s' % (outdir, status_fn), 'w')
+    state2num_f = open('%s/%s' % (outdir, state2num_fn), 'w')
     out_f = open('%s/%s' % (outdir, out_fn), 'w')
-    return para_f, network_f, gemf2orig_f, out_f
+    return para_f, network_f, node2num_f, status_f, state2num_f, out_f
 
-def load_contact_network(contact_network_fn, network_f, gemf2orig_f):
+def load_contact_network(contact_network_fn, network_f, node2num_f):
     '''
     Load contact network and convert to GEMF network format
 
@@ -104,14 +116,14 @@ def load_contact_network(contact_network_fn, network_f, gemf2orig_f):
 
         `network_f` (`file`): Write-mode file object to GEMF network file
 
-        `gemf2orig_f` (`file`): Write-mode file object to "GEMF to original node label" mapping file
+        `node2num_f` (`file`): Write-mode file object to "node label to GEMF number" mapping file
 
     Returns:
         `dict`: A mapping from node label to node number
 
         `list`: A mapping from node number to node label
     '''
-    node2num = dict(); num2node = list()
+    node2num = dict(); num2node = [None] # None is dummy (GEMF starts node numbers at 1)
     for l in open(contact_network_fn):
         # skip empty and header lines
         if len(l) == 0 or l[0] == '#' or l[0] == '\n':
@@ -146,17 +158,55 @@ def load_contact_network(contact_network_fn, network_f, gemf2orig_f):
             raise ValueError("Invalid contact network file: %s" % contact_network_fn)
 
     # finish up and return
-    gemf2orig_f.write(str({num:node for num, node in enumerate(num2node)}))
-    gemf2orig_f.close(); network_f.close()
+    node2num_f.write(str(node2num)); node2num_f.close(); network_f.close()
     return node2num, num2node
 
-# main function
+def load_initial_states(initial_states_fn, status_f, state2num_f, node2num):
+    '''
+    Load initial states and convert to GEMF status format
+
+    Args:
+        `initial_states_fn` (`str`): Path to initial states file (FAVITES format)
+
+        `status_f` (`file`): Write-mode file object to GEMF status file
+
+        `state2num_f` (`file`): Write-mode file object to "state label to GEMF number" mapping file
+
+        `node2num` (`dict`): A mapping from node label to node number (for validity checking)
+
+    Returns:
+        `dict`: A mapping from state label to state number
+
+        `list`: A mapping from state number to state label
+    '''
+    state2num = dict(); num2state = list()
+    for l in open(initial_states_fn):
+        # skip empty and header lines
+        if len(l) == 0 or l[0] == '#' or l[0] == '\n':
+            continue
+        u, s = l.split('\t'); u = u.strip(); s = s.strip()
+        try:
+            u_num = node2num[u]
+        except:
+            raise ValueError("Encountered node in inital states file that is not in contact network file: %s" % u)
+        try:
+            s_num = state2num[s]
+        except:
+            s_num = len(num2state); state2num[s] = s_num; num2state.append(s)
+        status_f.write('%d\n' % s_num)
+
+    # finish up and return
+    state2num_f.write(str(state2num)); state2num_f.close(); status_f.close()
+    return state2num, num2state
+
 def main():
-    # parse user args and prepare run
-    args = parse_args()
-    check_args(args)
-    para_f, network_f, gemf2orig_f, out_f = prepare_outdir(args.output)
-    node2num, num2node = load_contact_network(args.contact_network, network_f, gemf2orig_f)
+    '''
+    Main function
+    '''
+    args = parse_args(); check_args(args)
+    para_f, network_f, node2num_f, status_f, state2num_f, out_f = prepare_outdir(args.output)
+    node2num, num2node = load_contact_network(args.contact_network, network_f, node2num_f) # closes network_f and node2num_f
+    state2num, num2state = load_initial_states(args.initial_states, status_f, state2num_f, node2num)
 
 # execute main function
 if __name__ == "__main__":
