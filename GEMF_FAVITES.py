@@ -10,6 +10,7 @@ from os.path import abspath, expanduser, isdir, isfile
 from subprocess import call
 from sys import argv
 import argparse
+import random
 
 # useful variables
 C_UINT_MAX = 4294967295
@@ -78,8 +79,10 @@ def check_args(args):
         raise ValueError("Output directory exists: %s" % args.output)
 
     # check that RNG seed is non-negative
-    if args.rng_seed is not None and args.rng_seed < 0:
-        raise ValueError("RNG seed must be positive: %d" % args.rng_seed)
+    if args.rng_seed is not None:
+        if args.rng_seed < 0:
+            raise ValueError("RNG seed must be positive: %d" % args.rng_seed)
+        random.seed(args.rng_seed)
 
 def prepare_outdir(outdir, para_fn=DEFAULT_FN_GEMF_PARA, network_fn=DEFAULT_FN_GEMF_NETWORK, node2num_fn=DEFAULT_FN_GEMF_NODE2NUM, status_fn=DEFAULT_FN_GEMF_STATUS, state2num_fn=DEFAULT_FN_GEMF_STATE2NUM, trans_fn=DEFAULT_FN_TRANSMISSIONS_FAVITES):
     '''
@@ -238,11 +241,15 @@ def create_gemf_para(rates_fn, end_time, max_events, network_fn, status_fn, out_
         `num2state` (`list`): A mapping from state number to state label
 
         `rng_seed` (`int`): Seed for random number generation
+
+    Returns:
+        `dict`: Transition rates, where `RATE[x][y][z]` denotes the rate of the transition from `y` to `z` caused by `x` (state numbers, not labels)
+
+        `list`: Sorted list of inducer state numbers
     '''
     # load transition rates
     RATE = dict() # RATE[by_state][from_state][to_state] = transition rate (by_state == None means nodal transition)
     INDUCERS = set() # state numbers of inducer states
-    matrices = dict() # TODO
     for l in open(rates_fn):
         if len(l) == 0 or l[0] == '#' or l[0] == '\n':
             continue
@@ -283,8 +290,9 @@ def create_gemf_para(rates_fn, end_time, max_events, network_fn, status_fn, out_
     para_f.write('\n')
 
     # write edged transition matrix (by_state != None)
+    INDUCERS = sorted(INDUCERS)
     para_f.write("[EDGED_TRAN_MATRIX]\n")
-    for s_by in sorted(INDUCERS):
+    for s_by in INDUCERS:
         for s_from in range(NUM_STATES):
             if s_from in RATE[s_by]:
                 rates = [str(RATE[s_by][s_from][s_to]) if s_to in RATE[s_by][s_from] else '0' for s_to in range(NUM_STATES)]
@@ -295,20 +303,20 @@ def create_gemf_para(rates_fn, end_time, max_events, network_fn, status_fn, out_
 
     # write remaining sections of parameter file
     para_f.write("[STATUS_BEGIN]\n0\n\n")
-    para_f.write("[INDUCER_LIST]\n%s\n\n" % ' '.join(str(s) for s in sorted(INDUCERS)))
+    para_f.write("[INDUCER_LIST]\n%s\n\n" % ' '.join(str(s) for s in INDUCERS))
     para_f.write("[SIM_ROUNDS]\n1\n\n")
     para_f.write("[INTERVAL_NUM]\n1\n\n")
     para_f.write("[MAX_TIME]\n%s\n\n" % end_time)
     para_f.write("[MAX_EVENTS]\n%d\n\n" % max_events)
     para_f.write("[DIRECTED]\n1\n\n")
     para_f.write("[SHOW_INDUCER]\n1\n\n")
-    para_f.write("[DATA_FILE]\n%s\n\n" % network_fn.split('/')[-1])
+    para_f.write("[DATA_FILE]\n%s\n\n" % '\n'.join([network_fn.split('/')[-1]]*len(INDUCERS)))
     para_f.write("[STATUS_FILE]\n%s\n\n" % status_fn.split('/')[-1])
     if rng_seed is not None:
         para_f.write("[RANDOM_SEED]\n%d\n\n" % rng_seed)
     para_f.write("[OUT_FILE]\n%s\n" % out_fn.split('/')[-1])
     para_f.close()
-    return matrices
+    return RATE, INDUCERS
 
 def run_gemf(outdir, log_fn, gemf_path=DEFAULT_GEMF_PATH):
     '''
@@ -323,8 +331,79 @@ def run_gemf(outdir, log_fn, gemf_path=DEFAULT_GEMF_PATH):
     chdir(orig_dir)
     return log_f
 
-def convert_transmissions_to_favites(matrices, infected_states_fn, out_fn, trans_fn):
+def convert_transmissions_to_favites(infected_states_fn, status_fn, out_fn, trans_f, num2node, node2num, num2state, state2num, RATE, INDUCERS):
+    '''
+    Convert GEMF transmission network to FAVITES format
+
+    Args:
+        `infected_states_fn` (`str`): Path to infected states file
+
+        `status_fn` (`str`): Path to GEMF status file
+
+        `out_fn` (`str`): Path to GEMF output file
+
+        `trans_f` (`file`): Write-mode file object to output FAVITES-format transmission network
+
+        `state2num` (`dict`): A mapping from state label to state number
+
+        `RATE` (`dict`): Transition rates, where `RATE[x][y][z]` denotes the rate of the transition from `y` to `z` caused by `x` (state numbers, not labels)
+
+        `INDUCERS` (`list`): Sorted list of inducer state numbers
+    '''
+    # load and check infected states
     infected_states = {l.strip() for l in open(infected_states_fn)}
+    for s in infected_states:
+        if s not in state2num:
+            raise ValueError("Encountered state in infectious states file that didn't appear in rates or initial states files: %s" % s)
+    infected_states = {state2num[s] for s in infected_states}
+
+    # write seeds to output FAVITES file
+    for u_num, s_num in enumerate(open(status_fn)):
+        if int(s_num) in infected_states:
+            trans_f.write("None\t%s\t0\n" % num2node[int(u_num)+1])
+
+    # convert GEMF output to FAVITES format
+    INDUCER_STATES = [None] + INDUCERS
+    for l in open(out_fn):
+        # parse easy components
+        parts = l.split(' ')
+        from_s_num = int(parts[3]) # number of individual's previous state
+        to_s_num = int(parts[4])   # number of individual's current state
+        if from_s_num in infected_states or to_s_num not in infected_states:
+            continue               # individual transitioned to non-infectious state (so skip)
+        t = float(parts[0])        # time of current transition event
+        rate = float(parts[1])     # total rate of ALL state transitions in the network
+        v_num = int(parts[2])      # number of individual who transitioned
+        v = num2node[v_num]        # name of individual who transitioned
+
+        # parse inducer lists: inducers[0] = nodal transition, inducers[1] = first inducer state, inducers[2] = second inducer state, etc.
+        inducers = [[int(tmp) for tmp in inds.split(',') if len(tmp) != 0] for inds in parts[-1].rstrip().lstrip('[').rstrip(']').split('],[')]
+        inducer_state_rates = [(RATE[INDUCER_STATES[i]][from_s_num][to_s_num] * len(u_nums), i) for i, u_nums in enumerate(inducers) if len(u_nums) != 0]
+        by_s_inducer_ind = roll_die(inducer_state_rates)[1]
+        by_s_num = INDUCER_STATES[by_s_inducer_ind]
+        if INDUCER_STATES[by_s_inducer_ind] is None:
+            trans_f.write("None\t%s\t%s\n" % (num2node[v_num], t))
+        else:
+            u_num = random.choice(inducers[by_s_inducer_ind])
+            trans_f.write("%s\t%s\t%s\n" % (num2node[u_num], num2node[v_num], t))
+
+def roll_die(faces):
+    '''
+    Roll a multi-faced die
+
+    Args:
+        `faces` (`list`): Die faces as `(prob, label)` `tuple`s
+
+    Returns:
+        `tuple`: The `(prob, label)` die face that succeeded
+    '''
+    face_tot = sum(p for p, s in faces)
+    faces = [(p/face_tot,s) for p, s in faces]
+    x = random.random(); tot = 0.
+    for face in faces:
+        if x <= face[0]:
+            return face
+    return faces[-1]
 
 def main():
     '''
@@ -334,9 +413,9 @@ def main():
     para_f, network_f, node2num_f, status_f, state2num_f, trans_f = prepare_outdir(args.output)
     node2num, num2node = create_gemf_network(args.contact_network, network_f, node2num_f) # closes network_f and node2num_f
     state2num, num2state = create_gemf_status(args.initial_states, status_f, node2num) # closes status_f
-    matrices = create_gemf_para(args.rates, args.end_time, args.max_events, network_f.name, status_f.name, DEFAULT_FN_GEMF_OUT, para_f, state2num_f, state2num, num2state, args.rng_seed) # closes para_f and state2num_f
+    RATE, INDUCERS = create_gemf_para(args.rates, args.end_time, args.max_events, network_f.name, status_f.name, DEFAULT_FN_GEMF_OUT, para_f, state2num_f, state2num, num2state, args.rng_seed) # closes para_f and state2num_f
     log_f = run_gemf(args.output, DEFAULT_FN_GEMF_LOG, args.gemf_path) # closes log_f
-    convert_transmissions_to_favites(matrices, args.infected_states, '%s/%s' % (args.output, DEFAULT_FN_GEMF_OUT), trans_f)
+    convert_transmissions_to_favites(args.infected_states, status_f.name, '%s/%s' % (args.output, DEFAULT_FN_GEMF_OUT), trans_f, num2node, node2num, num2state, state2num, RATE, INDUCERS)
 
 # execute main function
 if __name__ == "__main__":
