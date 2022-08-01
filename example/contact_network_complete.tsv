@@ -1,55 +1,55 @@
-NODE	0	.
-NODE	1	.
-NODE	2	.
-NODE	3	.
-NODE	4	.
-NODE	5	.
-NODE	6	.
-NODE	7	.
-NODE	8	.
-NODE	9	.
-EDGE	0	1	.	u
-EDGE	0	2	.	u
-EDGE	0	3	.	u
-EDGE	0	4	.	u
-EDGE	0	5	.	u
-EDGE	0	6	.	u
-EDGE	0	7	.	u
-EDGE	0	8	.	u
-EDGE	0	9	.	u
-EDGE	1	2	.	u
-EDGE	1	3	.	u
-EDGE	1	4	.	u
-EDGE	1	5	.	u
-EDGE	1	6	.	u
-EDGE	1	7	.	u
-EDGE	1	8	.	u
-EDGE	1	9	.	u
-EDGE	2	3	.	u
-EDGE	2	4	.	u
-EDGE	2	5	.	u
-EDGE	2	6	.	u
-EDGE	2	7	.	u
-EDGE	2	8	.	u
-EDGE	2	9	.	u
-EDGE	3	4	.	u
-EDGE	3	5	.	u
-EDGE	3	6	.	u
-EDGE	3	7	.	u
-EDGE	3	8	.	u
-EDGE	3	9	.	u
-EDGE	4	5	.	u
-EDGE	4	6	.	u
-EDGE	4	7	.	u
-EDGE	4	8	.	u
-EDGE	4	9	.	u
-EDGE	5	6	.	u
-EDGE	5	7	.	u
-EDGE	5	8	.	u
-EDGE	5	9	.	u
-EDGE	6	7	.	u
-EDGE	6	8	.	u
-EDGE	6	9	.	u
-EDGE	7	8	.	u
-EDGE	7	9	.	u
-EDGE	8	9	.	u
+NODE	Person 0	.
+NODE	Person 1	.
+NODE	Person 2	.
+NODE	Person 3	.
+NODE	Person 4	.
+NODE	Person 5	.
+NODE	Person 6	.
+NODE	Person 7	.
+NODE	Person 8	.
+NODE	Person 9	.
+EDGE	Person 0	Person 1	.	u
+EDGE	Person 0	Person 2	.	u
+EDGE	Person 0	Person 3	.	u
+EDGE	Person 0	Person 4	.	u
+EDGE	Person 0	Person 5	.	u
+EDGE	Person 0	Person 6	.	u
+EDGE	Person 0	Person 7	.	u
+EDGE	Person 0	Person 8	.	u
+EDGE	Person 0	Person 9	.	u
+EDGE	Person 1	Person 2	.	u
+EDGE	Person 1	Person 3	.	u
+EDGE	Person 1	Person 4	.	u
+EDGE	Person 1	Person 5	.	u
+EDGE	Person 1	Person 6	.	u
+EDGE	Person 1	Person 7	.	u
+EDGE	Person 1	Person 8	.	u
+EDGE	Person 1	Person 9	.	u
+EDGE	Person 2	Person 3	.	u
+EDGE	Person 2	Person 4	.	u
+EDGE	Person 2	Person 5	.	u
+EDGE	Person 2	Person 6	.	u
+EDGE	Person 2	Person 7	.	u
+EDGE	Person 2	Person 8	.	u
+EDGE	Person 2	Person 9	.	u
+EDGE	Person 3	Person 4	.	u
+EDGE	Person 3	Person 5	.	u
+EDGE	Person 3	Person 6	.	u
+EDGE	Person 3	Person 7	.	u
+EDGE	Person 3	Person 8	.	u
+EDGE	Person 3	Person 9	.	u
+EDGE	Person 4	Person 5	.	u
+EDGE	Person 4	Person 6	.	u
+EDGE	Person 4	Person 7	.	u
+EDGE	Person 4	Person 8	.	u
+EDGE	Person 4	Person 9	.	u
+EDGE	Person 5	Person 6	.	u
+EDGE	Person 5	Person 7	.	u
+EDGE	Person 5	Person 8	.	u
+EDGE	Person 5	Person 9	.	u
+EDGE	Person 6	Person 7	.	u
+EDGE	Person 6	Person 8	.	u
+EDGE	Person 6	Person 9	.	u
+EDGE	Person 7	Person 8	.	u
+EDGE	Person 7	Person 9	.	u
+EDGE	Person 8	Person 9	.	u
