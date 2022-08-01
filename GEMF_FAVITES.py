@@ -21,6 +21,7 @@ def parse_args():
     parser.add_argument('-r', '--rates', required=True, type=str, help="State Transition Rates (TSV)")
     parser.add_argument('-t', '--end_time', required=True, type=float, help="End Time")
     parser.add_argument('-o', '--output', required=True, type=str, help="Output Directory")
+    parser.add_argument('--gemf_path', required=False, type=str, default='GEMF', help="Path to GEMF Executable")
     return parser.parse_args()
 
 # check user args for validity
