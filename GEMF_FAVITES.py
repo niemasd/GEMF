@@ -14,7 +14,7 @@ import argparse
 import random
 
 # useful variables
-VERSION = '0.0.1'
+VERSION = '1.0.2'
 C_UINT_MAX = 4294967295
 
 # defaults
