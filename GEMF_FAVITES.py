@@ -370,12 +370,11 @@ def convert_transmissions_to_favites(infected_states_fn, status_fn, out_fn, tran
 
     # write seeds to output FAVITES file
     for u_num, s_num_s in enumerate(open(status_fn)):
-        s_num = int(s_num_s)
+        u = num2node[int(u_num)+1]; s_num = int(s_num_s)
         if s_num in infected_states:
-            u = num2node[int(u_num)+1]
             transmission_f.write("None\t%s\t0\n" % u)
-            if transition_f is not None:
-                transition_f.write("%s\t%s\t0\n" % (u, num2state[s_num]))
+        if transition_f is not None:
+            transition_f.write("%s\t%s\t0\n" % (u, num2state[s_num]))
 
     # convert GEMF output to FAVITES format
     INDUCER_STATES = [None] + INDUCERS
