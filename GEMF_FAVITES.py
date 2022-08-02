@@ -5,10 +5,11 @@ Niema Moshiri 2022
 '''
 
 # imports
+from datetime import datetime
 from os import chdir, getcwd, makedirs
 from os.path import abspath, expanduser, isdir, isfile
 from subprocess import call
-from sys import argv
+from sys import argv, stdout
 import argparse
 import random
 
@@ -27,6 +28,27 @@ DEFAULT_FN_GEMF_STATUS = 'status.txt'
 DEFAULT_FN_TRANSITION = 'all_state_transitions.txt'
 DEFAULT_FN_TRANSMISSIONS_FAVITES = 'transmission_network.txt'
 DEFAULT_GEMF_PATH = 'GEMF'
+
+def get_time():
+    '''
+    Get current time
+
+    Returns:
+        `str`: Current time as `YYYY-MM-DD HH:MM:SS`
+    '''
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def print_log(s='', end='\n'):
+    '''
+    Print to log
+
+    Args:
+        `s` (`str`): String to print
+
+        `end` (`str`): Line termination string
+    '''
+    tmp = "[%s] %s" % (get_time(), s)
+    print(tmp, end=end); stdout.flush()
 
 def parse_args():
     '''
@@ -49,6 +71,7 @@ def parse_args():
     parser.add_argument('-o', '--output', required=True, type=str, help="Output Directory")
     parser.add_argument('--max_events', required=False, type=int, default=C_UINT_MAX, help="Max Number of Events")
     parser.add_argument('--output_all_transitions', action="store_true", help="Output All Transition Events (slower)")
+    parser.add_argument('--quiet', action="store_true", help="Suppress log messages")
     parser.add_argument('--rng_seed', required=False, type=int, default=None, help="Random Number Generation Seed")
     parser.add_argument('--gemf_path', required=False, type=str, default=DEFAULT_GEMF_PATH, help="Path to GEMF Executable")
     args = parser.parse_args()
@@ -432,11 +455,24 @@ def main():
     Main function
     '''
     args = parse_args(); check_args(args)
+    if not args.quiet:
+        print_log("Running GEMF_FAVITES v%s" % VERSION)
+        print_log("Preparing output directory: %s" % args.output)
     para_f, network_f, node2num_f, status_f, state2num_f, transition_f, transmission_f = prepare_outdir(args.output, output_transitions=args.output_all_transitions)
+    if not args.quiet:
+        print_log("Creating GEMF network file...")
     node2num, num2node = create_gemf_network(args.contact_network, network_f, node2num_f) # closes network_f and node2num_f
+    if not args.quiet:
+        print_log("Creating GEMF status file...")
     state2num, num2state = create_gemf_status(args.initial_states, status_f, node2num) # closes status_f
+    if not args.quiet:
+        print_log("Creating GEMF parameter file...")
     RATE, INDUCERS = create_gemf_para(args.rates, args.end_time, args.max_events, network_f.name, status_f.name, DEFAULT_FN_GEMF_OUT, para_f, state2num_f, state2num, num2state, args.rng_seed) # closes para_f and state2num_f
+    if not args.quiet:
+        print_log("Running GEMF...")
     log_f = run_gemf(args.output, DEFAULT_FN_GEMF_LOG, args.gemf_path) # closes log_f
+    if not args.quiet:
+        print_log("Converting GEMF output to FAVITES format...")
     convert_transmissions_to_favites(args.infected_states, status_f.name, '%s/%s' % (args.output, DEFAULT_FN_GEMF_OUT), transition_f, transmission_f, num2node, node2num, num2state, state2num, RATE, INDUCERS) # closes transition_f and transmission_f
 
 # execute main function
