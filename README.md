@@ -42,7 +42,7 @@ optional arguments:
   --gemf_path GEMF_PATH                                   Path to GEMF Executable (default: GEMF)
 ```
 
-## File Formats
+## Input File Formats
 
 Example files to execute a simulation using [`GEMF_FAVITES.py`](GEMF_FAVITES.py) can be found in the [`example`](example) directory. There are 4 key files needed to execute `GEMF_FAVITES.py`: a contact network, an "initial states" file, an "infected states" file, and a "state transition rates" file.
 
@@ -93,3 +93,33 @@ I<TAB>R<TAB>None<TAB>1
 ```
 
 Note that, for a given individual *u*, a nodal transition (i.e., rows in which the "by" state in column 3 is `None`) is a Poisson process whose rate is the value in column 4, but an edge-based transition (i.e., rows in which the "by" state in column 3 is *s* != `None`) is a Poisson process whose rate is the number of neighbors of *u* who are in state *s* multiplied by the value in column 4. In the example above, an individual in state `E` will always transition to state `I` via a Poisson process with rate 4, but an individual in state `S` will transition to state `E` via a Poisson process with rate 2 * number of neighbors in state `I`.
+
+## Output File Formats
+There are a few key files in the output directory created by `GEMF_FAVITES.py`.
+
+### Intermediate GEMF Files
+In order to run the `GEMF` executable to simulate the transmission network, the `GEMF_FAVITES.py` script parses the user input and converts it into a format for use with `GEMF`:
+
+* `node2num.txt`: A JSON-format mapping of input contact network node labels to internal GEMF node numbers
+* `state2num.txt`: A JSON-format mapping of input transmission model state labels to internal GEMF state numbers
+* `network.txt`: The GEMF-format contact network
+* `status.txt`: The GEMF-format initial states
+* `para.txt`: The GEMF parameter file
+* `output.txt`: The raw GEMF output file
+* `log.txt`: The GEMF log file
+
+### Transmission Network
+The main output of `GEMF_FAVITES.py` is the simulated transmission network, `transmission_network.txt`, which is in the [FAVITES transmission network file format](https://github.com/niemasd/FAVITES/wiki/File-Formats#transmission-network-file-format); note that `<TAB>` is referring to a single tab character (i.e., `'\t'`):
+
+```
+None<TAB>Eric<TAB>0
+Eric<TAB>Bill<TAB>1
+Eric<TAB>Curt<TAB>2
+Eric<TAB>Curt<TAB>3
+Curt<TAB>Bill<TAB>4
+Curt<TAB>Bill<TAB>5
+Curt<TAB>Curt<TAB>6
+```
+
+### All State Transitions (optional)
+If you run `GEMF_FAVITES.py` with the `--output_all_transitions` flag, all state transitions will be output to a file called `all_state_transitions.txt`, which is a TSV file with four columns: (1) the individual's name, (2) the individual's state before the transition, (3) the individual's state after the transition, and (4) the time of the transition (`None` denotes "no previous state").
