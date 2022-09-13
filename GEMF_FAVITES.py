@@ -456,6 +456,8 @@ def main():
     '''
     Main function
     '''
+    if len(argv) > 1 and argv[1].lower().lstrip('-') == 'version':
+        print("GEMF_FAVITES v%s" % VERSION); exit()
     args = parse_args(); check_args(args)
     if not args.quiet:
         print_log("Running GEMF_FAVITES v%s" % VERSION)
