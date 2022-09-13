@@ -14,7 +14,7 @@ import argparse
 import random
 
 # useful variables
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 C_UINT_MAX = 4294967295
 
 # defaults
@@ -397,7 +397,7 @@ def convert_transmissions_to_favites(infected_states_fn, status_fn, out_fn, tran
         if s_num in infected_states:
             transmission_f.write("None\t%s\t0\n" % u)
         if transition_f is not None:
-            transition_f.write("%s\t%s\t0\n" % (u, num2state[s_num]))
+            transition_f.write("%s\tNone\t%s\t0\n" % (u, num2state[s_num]))
 
     # convert GEMF output to FAVITES format
     INDUCER_STATES = [None] + INDUCERS
@@ -412,7 +412,8 @@ def convert_transmissions_to_favites(infected_states_fn, status_fn, out_fn, tran
         to_s_num = int(parts[4])   # number of individual's current state
         to_s = num2state[to_s_num]
         if transition_f is not None:
-            transition_f.write('%s\t%s\t%s\n' % (v, to_s, t))
+            from_s = num2state[from_s_num]
+            transition_f.write('%s\t%s\t%s\t%s\n' % (v, from_s, to_s, t))
         if from_s_num in infected_states or to_s_num not in infected_states:
             continue # only write inducer to transmission file if v went to infected state
 
