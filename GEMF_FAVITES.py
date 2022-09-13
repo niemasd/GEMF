@@ -6,6 +6,7 @@ Niema Moshiri 2022
 
 # imports
 from datetime import datetime
+from json import dump as jdump
 from os import chdir, getcwd, makedirs
 from os.path import abspath, expanduser, isdir, isfile
 from subprocess import call
@@ -208,7 +209,7 @@ def create_gemf_network(contact_network_fn, network_f, node2num_f):
             raise ValueError("Invalid contact network file: %s" % contact_network_fn)
 
     # finish up and return
-    node2num_f.write(str(node2num)); node2num_f.write('\n'); node2num_f.close(); network_f.close()
+    jdump(node2num, node2num_f); node2num_f.close(); network_f.close()
     return node2num, num2node
 
 def create_gemf_status(initial_states_fn, status_f, node2num):
@@ -309,7 +310,7 @@ def create_gemf_para(rates_fn, end_time, max_events, network_fn, status_fn, out_
         if to_s_num in RATE[by_s_num][from_s_num]:
             raise ValueError("Duplicate transition encountered: from '%s' to '%s' by '%s'" % (from_s, to_s, by_s))
         RATE[by_s_num][from_s_num][to_s_num] = r
-    state2num_f.write(str(state2num)); state2num_f.write('\n'); state2num_f.close(); NUM_STATES = len(state2num)
+    jdump(state2num, state2num_f); state2num_f.close(); NUM_STATES = len(state2num)
 
     # write nodal transition matrix (by_state == None)
     para_f.write("[NODAL_TRAN_MATRIX]\n")
