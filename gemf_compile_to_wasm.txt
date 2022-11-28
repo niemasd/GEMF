@@ -3,4 +3,4 @@ temporary file to record commands to compile GEMF.wasm file
 emcc -c common.c
 emcc -c nrm.c
 emcc -c para.c
-emcc -o GEMF.js gemfc_nrm.c nrm.o para.o common.o -O3 -sMODULARIZE -s 'EXPORT_NAME="createGEMFModule"' -sEXPORTED_FUNCTIONS=_run_gemf -sEXPORTED_RUNTIME_METHODS=ccall,cwrap
+emcc gemfc_nrm.c -o GEMF.js nrm.o para.o common.o -lm -sEXPORTED_FUNCTIONS=_run_gemf -sEXPORTED_RUNTIME_METHODS=ccall,cwrap

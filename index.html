@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <button onclick="runGEMF()">RUN GEMF</button>
+    </head>
+    <body>
+        <script async src="GEMF.js"></script>
+        <script>
+            let ready = false;
+            Module = {
+                onRuntimeInitialized: () => {
+                    ready = true;
+                }
+            }
+
+            const runGEMF = () => {
+                if (ready) {
+
+                    Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
+                }
+            }
+        </script>
+    </body>
+</html>
