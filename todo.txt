@@ -1,0 +1,3 @@
+- input validation, error handling, error messages
+- cleaner UI 
+- actual outputting of results
