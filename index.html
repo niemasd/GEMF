@@ -2,18 +2,26 @@
 <html>
     <head>
         <title>GEMF Online Tool</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <link rel="stylesheet" href="index.css">
     </head>
     <body>
-        <label for="parameter">Parameter file</label>
-        <input type="file" id="parameter" name="parameter">
-        <label for="network">Network file</label>
-        <input type="file" id="network" name="network">
-        <label for="status">Status file</label>
-        <input type="file" id="status" name="status">
+        <div class="mb-3">
+            <label for="parameter" class="form-label">Parameter file</label>
+            <input type="file" id="parameter" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label for="network">Network file</label>
+            <input type="file" id="network" name="network" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label for="status">Status file</label>
+            <input type="file" id="status" name="status" class="form-control">
+        </div>
         <button onclick="runGEMF()">RUN GEMF</button>
         <button onclick="downloadResults()">Download Results</button>
         <br>
-        <textarea id="output"></textarea>
+        <textarea id="output" class="form-control"></textarea>
         <script async src="GEMF.js"></script>
         <script>
             let ready = false;
@@ -63,7 +71,7 @@
             }
             
             // handle download results button 
-            downloadResults = () => {
+            const downloadResults = () => {
                 if (output !== undefined) {
                     download(output, "output.txt");
                 } else {
@@ -73,7 +81,7 @@
 
             // Function to download data to a file
             // from: https://stackoverflow.com/questions/13405129/create-and-save-a-file-with-javascript
-            download = (data, filename, type="text/plain;charset=utf-8") => {
+            const download = (data, filename, type="text/plain;charset=utf-8") => {
                 var file = new Blob([data], {type: type});
                 if (window.navigator.msSaveOrOpenBlob) // IE10+
                     window.navigator.msSaveOrOpenBlob(file, filename);
@@ -91,5 +99,8 @@
                 }
             }
         </script>
+        <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     </body>
 </html>
