@@ -35,3 +35,6 @@ GEMF
 # Debug files
 *.dSYM/
 *.su
+
+# output folder
+output/
