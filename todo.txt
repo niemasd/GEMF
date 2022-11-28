@@ -1,3 +1,2 @@
 - input validation, error handling, error messages
-- cleaner UI (React)
-- actual callback-based version of gemf result handling
+- convert to FAVITES

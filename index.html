@@ -89,11 +89,10 @@
                 return () => {
                     const input = document.getElementById(id).files[0];
                     const reader = new FileReader();
-                    console.log(id);
-                    reader.onload = () => {
-                        console.log(reader.result);
+                    reader.onload = function() {
                         FS.writeFile(fileName, reader.result);
-                        input.value = "";
+                        // clear so that the reader will run again for new files, even if same name
+                        document.getElementById(id).value = "";
                     }
                     reader.readAsText(input);
                 }
