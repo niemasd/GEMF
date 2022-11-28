@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <label for="parameter">Parameter file</label>
+        <input type="file" id="parameter" name="parameter">
+        <label for="network">Network file</label>
+        <input type="file" id="network" name="network">
+        <label for="status">Status file</label>
+        <input type="file" id="status" name="status">
         <button onclick="runGEMF()">RUN GEMF</button>
     </head>
     <body>
@@ -15,8 +21,29 @@
 
             const runGEMF = () => {
                 if (ready) {
+                    writeFile("parameter", "para.txt")();
+                    writeFile("network", "network.txt")();
+                    writeFile("status", "status.txt")();
+                    FS.writeFile('output.txt', '');
 
-                    Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
+                    setTimeout(() => {
+                        Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
+                    }, 2000);
+
+                    setTimeout(() => {
+                        console.log(new TextDecoder().decode(FS.readFile('output.txt')));
+                    }, 4000)
+                }
+            }
+
+            const writeFile = (id, fileName) => {
+                return () => {
+                    const input = document.getElementById(id).files[0];
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        FS.writeFile(fileName, reader.result);
+                    }
+                    reader.readAsText(input);
                 }
             }
         </script>
