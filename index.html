@@ -19,9 +19,8 @@
             let ready = false;
             let output = undefined;
 
+            // global module object from GEMF.js
             Module = {
-
-
                 onRuntimeInitialized: () => {
                     ready = true;
                 }
@@ -35,6 +34,7 @@
                         writeFile("status", "status.txt")();
                         FS.writeFile('output.txt', '');
 
+                        // TODO: time-based right now, change to callback-based
                         setTimeout(() => {
                             Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
                         }, 1000);
@@ -50,6 +50,7 @@
                 }
             }
 
+            // closure function for writing text to files
             const writeFile = (id, fileName) => {
                 return () => {
                     const input = document.getElementById(id).files[0];
@@ -61,6 +62,7 @@
                 }
             }
             
+            // handle download results button 
             downloadResults = () => {
                 if (output !== undefined) {
                     download(output, "output.txt");
