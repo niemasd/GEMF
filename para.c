@@ -7,6 +7,7 @@
 #include <math.h>
 #include <ctype.h>
 #include <limits.h>
+#include <time.h>
 /*
  * process configuration
  * Futing Fan
