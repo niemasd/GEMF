@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <title>GEMF Online Tool</title>
+    </head>
+    <body>
         <label for="parameter">Parameter file</label>
         <input type="file" id="parameter" name="parameter">
         <label for="network">Network file</label>
@@ -8,12 +11,17 @@
         <label for="status">Status file</label>
         <input type="file" id="status" name="status">
         <button onclick="runGEMF()">RUN GEMF</button>
-    </head>
-    <body>
+        <button onclick="downloadResults()">Download Results</button>
+        <br>
+        <textarea id="output"></textarea>
         <script async src="GEMF.js"></script>
         <script>
             let ready = false;
+            let output = undefined;
+
             Module = {
+
+
                 onRuntimeInitialized: () => {
                     ready = true;
                 }
@@ -21,18 +29,24 @@
 
             const runGEMF = () => {
                 if (ready) {
-                    writeFile("parameter", "para.txt")();
-                    writeFile("network", "network.txt")();
-                    writeFile("status", "status.txt")();
-                    FS.writeFile('output.txt', '');
+                    try {
+                        writeFile("parameter", "para.txt")();
+                        writeFile("network", "network.txt")();
+                        writeFile("status", "status.txt")();
+                        FS.writeFile('output.txt', '');
 
-                    setTimeout(() => {
-                        Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
-                    }, 2000);
+                        setTimeout(() => {
+                            Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
+                        }, 1000);
 
-                    setTimeout(() => {
-                        console.log(new TextDecoder().decode(FS.readFile('output.txt')));
-                    }, 4000)
+                        setTimeout(() => {
+                            output = new TextDecoder().decode(FS.readFile('output.txt'));
+                            const outputArea = document.getElementById("output");
+                            outputArea.value = output;
+                        }, 2000)
+                    } catch (err) {
+                        alert("Error running GEMF. Please ensure valid input files.");
+                    }
                 }
             }
 
@@ -44,6 +58,34 @@
                         FS.writeFile(fileName, reader.result);
                     }
                     reader.readAsText(input);
+                }
+            }
+            
+            downloadResults = () => {
+                if (output !== undefined) {
+                    download(output, "output.txt");
+                } else {
+                    alert("GEMF has not been run yet. No output results.");
+                }
+            }
+
+            // Function to download data to a file
+            // from: https://stackoverflow.com/questions/13405129/create-and-save-a-file-with-javascript
+            download = (data, filename, type="text/plain;charset=utf-8") => {
+                var file = new Blob([data], {type: type});
+                if (window.navigator.msSaveOrOpenBlob) // IE10+
+                    window.navigator.msSaveOrOpenBlob(file, filename);
+                else { // Others
+                    var a = document.createElement("a"),
+                            url = URL.createObjectURL(file);
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(function() {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);  
+                    }, 0); 
                 }
             }
         </script>
