@@ -93,22 +93,21 @@ if (ENVIRONMENT_IS_NODE) {
 // include: node_shell_read.js
 
 
-// These modules will usually be used on Node.js. Load them eagerly to avoid
-// the complexity of lazy-loading. However, for now we must guard on require()
-// actually existing: if the JS is put in a .mjs file (ES6 module) and run on
-// node, then we'll detect node as the environment and get here, but require()
-// does not exist (since ES6 modules should use |import|). If the code actually
-// uses the node filesystem then it will crash, of course, but in the case of
-// code that never uses it we don't want to crash here, so the guarding if lets
-// such code work properly. See discussion in
-// https://github.com/emscripten-core/emscripten/pull/17851
-var fs, nodePath;
-if (typeof require === 'function') {
-  fs = require('fs');
-  nodePath = require('path');
-}
+var fs;
+var nodePath;
+
+var requireNodeFS = () => {
+  // Use nodePath as the indicator for these not being initialized,
+  // since in some environments a global fs may have already been
+  // created.
+  if (!nodePath) {
+    fs = require('fs');
+    nodePath = require('path');
+  }
+};
 
 read_ = (filename, binary) => {
+  requireNodeFS();
   filename = nodePath['normalize'](filename);
   return fs.readFileSync(filename, binary ? undefined : 'utf8');
 };
@@ -123,6 +122,7 @@ readBinary = (filename) => {
 };
 
 readAsync = (filename, onload, onerror) => {
+  requireNodeFS();
   filename = nodePath['normalize'](filename);
   fs.readFile(filename, function(err, data) {
     if (err) onerror(err);
@@ -395,14 +395,6 @@ function missingLibrarySymbol(sym) {
         // Can't `abort()` here because it would break code that does runtime
         // checks.  e.g. `if (typeof SDL === 'undefined')`.
         var msg = '`' + sym + '` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line';
-        // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE requires the name as it appears in
-        // library.js, which means $name for a JS name with no prefix, or name
-        // for a JS name like _name.
-        var librarySymbol = sym;
-        if (!librarySymbol.startsWith('_')) {
-          librarySymbol = '$' + sym;
-        }
-        msg += " (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=" + librarySymbol + ")";
         if (isExportedByForceFilesystem(sym)) {
           msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
         }
@@ -486,15 +478,13 @@ function _free() {
 // include: runtime_strings.js
 
 
-// runtime_strings.js: String related runtime functions that are part of both
-// MINIMAL_RUNTIME and regular runtime.
+// runtime_strings.js: Strings related runtime functions that are part of both MINIMAL_RUNTIME and regular runtime.
 
 var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder('utf8') : undefined;
 
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
+// a copy of that string as a Javascript String object.
 /**
- * Given a pointer 'idx' to a null-terminated UTF8-encoded string in the given
- * array that contains uint8 values, returns a copy of that string as a
- * Javascript String object.
  * heapOrArray is either a regular array, or a JavaScript typed array view.
  * @param {number} idx
  * @param {number=} maxBytesToRead
@@ -503,19 +493,16 @@ var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder('utf8') : 
 function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
   var endIdx = idx + maxBytesToRead;
   var endPtr = idx;
-  // TextDecoder needs to know the byte length in advance, it doesn't stop on
-  // null terminator by itself.  Also, use the length info to avoid running tiny
-  // strings through TextDecoder, since .subarray() allocates garbage.
-  // (As a tiny code save trick, compare endPtr against endIdx using a negation,
-  // so that undefined means Infinity)
+  // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
+  // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
+  // (As a tiny code save trick, compare endPtr against endIdx using a negation, so that undefined means Infinity)
   while (heapOrArray[endPtr] && !(endPtr >= endIdx)) ++endPtr;
 
   if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
     return UTF8Decoder.decode(heapOrArray.subarray(idx, endPtr));
   }
   var str = '';
-  // If building with TextDecoder, we have already computed the string length
-  // above, so test loop end condition against that
+  // If building with TextDecoder, we have already computed the string length above, so test loop end condition against that
   while (idx < endPtr) {
     // For UTF8 byte structure, see:
     // http://en.wikipedia.org/wiki/UTF-8#Description
@@ -529,7 +516,7 @@ function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
     if ((u0 & 0xF0) == 0xE0) {
       u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
     } else {
-      if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte ' + ptrToString(u0) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
+      if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte 0x' + u0.toString(16) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
       u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heapOrArray[idx++] & 63);
     }
 
@@ -543,63 +530,48 @@ function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
   return str;
 }
 
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns a
+// copy of that string as a Javascript String object.
+// maxBytesToRead: an optional length that specifies the maximum number of bytes to read. You can omit
+//                 this parameter to scan the string until the first \0 byte. If maxBytesToRead is
+//                 passed, and the string at [ptr, ptr+maxBytesToReadr[ contains a null byte in the
+//                 middle, then the string will cut short at that byte index (i.e. maxBytesToRead will
+//                 not produce a string of exact length [ptr, ptr+maxBytesToRead[)
+//                 N.B. mixing frequent uses of UTF8ToString() with and without maxBytesToRead may
+//                 throw JS JIT optimizations off, so it is worth to consider consistently using one
+//                 style or the other.
 /**
- * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
- * emscripten HEAP, returns a copy of that string as a Javascript String object.
- *
  * @param {number} ptr
- * @param {number=} maxBytesToRead - An optional length that specifies the
- *   maximum number of bytes to read. You can omit this parameter to scan the
- *   string until the first \0 byte. If maxBytesToRead is passed, and the string
- *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
- *   string will cut short at that byte index (i.e. maxBytesToRead will not
- *   produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing
- *   frequent uses of UTF8ToString() with and without maxBytesToRead may throw
- *   JS JIT optimizations off, so it is worth to consider consistently using one
+ * @param {number=} maxBytesToRead
  * @return {string}
  */
 function UTF8ToString(ptr, maxBytesToRead) {
   return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
 }
 
-/**
- * Copies the given Javascript String object 'str' to the given byte array at
- * address 'outIdx', encoded in UTF8 form and null-terminated. The copy will
- * require at most str.length*4+1 bytes of space in the HEAP.  Use the function
- * lengthBytesUTF8 to compute the exact number of bytes (excluding null
- * terminator) that this function will write.
- *
- * @param {string} str - The Javascript string to copy.
- * @param {ArrayBufferView|Array<number>} heap - The array to copy to. Each
- *                                               index in this array is assumed
- *                                               to be one 8-byte element.
- * @param {number} outIdx - The starting offset in the array to begin the copying.
- * @param {number} maxBytesToWrite - The maximum number of bytes this function
- *                                   can write to the array.  This count should
- *                                   include the null terminator, i.e. if
- *                                   maxBytesToWrite=1, only the null terminator
- *                                   will be written and nothing else.
- *                                   maxBytesToWrite=0 does not write any bytes
- *                                   to the output, not even the null
- *                                   terminator.
- * @return {number} The number of bytes written, EXCLUDING the null terminator.
- */
+// Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
+// encoded in UTF8 form and null-terminated. The copy will require at most str.length*4+1 bytes of space in the HEAP.
+// Use the function lengthBytesUTF8 to compute the exact number of bytes (excluding null terminator) that this function will write.
+// Parameters:
+//   str: the Javascript string to copy.
+//   heap: the array to copy to. Each index in this array is assumed to be one 8-byte element.
+//   outIdx: The starting offset in the array to begin the copying.
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array.
+//                    This count should include the null terminator,
+//                    i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
+//                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
+// Returns the number of bytes written, EXCLUDING the null terminator.
+
 function stringToUTF8Array(str, heap, outIdx, maxBytesToWrite) {
-  // Parameter maxBytesToWrite is not optional. Negative values, 0, null,
-  // undefined and false each don't write out any bytes.
-  if (!(maxBytesToWrite > 0))
+  if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
     return 0;
 
   var startIdx = outIdx;
   var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
   for (var i = 0; i < str.length; ++i) {
-    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code
-    // unit, not a Unicode code point of the character! So decode
-    // UTF16->UTF32->UTF8.
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
-    // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description
-    // and https://www.ietf.org/rfc/rfc2279.txt
-    // and https://tools.ietf.org/html/rfc3629
+    // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
     var u = str.charCodeAt(i); // possibly a lead surrogate
     if (u >= 0xD800 && u <= 0xDFFF) {
       var u1 = str.charCodeAt(++i);
@@ -619,7 +591,7 @@ function stringToUTF8Array(str, heap, outIdx, maxBytesToWrite) {
       heap[outIdx++] = 0x80 | (u & 63);
     } else {
       if (outIdx + 3 >= endIdx) break;
-      if (u > 0x10FFFF) warnOnce('Invalid Unicode code point ' + ptrToString(u) + ' encountered when serializing a JS string to a UTF-8 string in wasm memory! (Valid unicode code points should be in range 0-0x10FFFF).');
+      if (u > 0x10FFFF) warnOnce('Invalid Unicode code point 0x' + u.toString(16) + ' encountered when serializing a JS string to a UTF-8 string in wasm memory! (Valid unicode code points should be in range 0-0x10FFFF).');
       heap[outIdx++] = 0xF0 | (u >> 18);
       heap[outIdx++] = 0x80 | ((u >> 12) & 63);
       heap[outIdx++] = 0x80 | ((u >> 6) & 63);
@@ -631,33 +603,21 @@ function stringToUTF8Array(str, heap, outIdx, maxBytesToWrite) {
   return outIdx - startIdx;
 }
 
-/**
- * Copies the given Javascript String object 'str' to the emscripten HEAP at
- * address 'outPtr', null-terminated and encoded in UTF8 form. The copy will
- * require at most str.length*4+1 bytes of space in the HEAP.
- * Use the function lengthBytesUTF8 to compute the exact number of bytes
- * (excluding null terminator) that this function will write.
- *
- * @return {number} The number of bytes written, EXCLUDING the null terminator.
- */
+// Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
+// null-terminated and encoded in UTF8 form. The copy will require at most str.length*4+1 bytes of space in the HEAP.
+// Use the function lengthBytesUTF8 to compute the exact number of bytes (excluding null terminator) that this function will write.
+// Returns the number of bytes written, EXCLUDING the null terminator.
+
 function stringToUTF8(str, outPtr, maxBytesToWrite) {
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
   return stringToUTF8Array(str, HEAPU8,outPtr, maxBytesToWrite);
 }
 
-/**
- * Returns the number of bytes the given Javascript string takes if encoded as a
- * UTF8 byte array, EXCLUDING the null terminator byte.
- *
- * @param {string} str - JavaScript string to operator on
- * @return {number} Length, in bytes, of the UTF8 encoded string.
- */
+// Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
 function lengthBytesUTF8(str) {
   var len = 0;
   for (var i = 0; i < str.length; ++i) {
-    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code
-    // unit, not a Unicode code point of the character! So decode
-    // UTF16->UTF32->UTF8.
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
     var c = str.charCodeAt(i); // possibly a lead surrogate
     if (c <= 0x7F) {
@@ -708,12 +668,12 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-var STACK_SIZE = 5242880;
-if (Module['STACK_SIZE']) assert(STACK_SIZE === Module['STACK_SIZE'], 'the stack size can no longer be determined at runtime')
+var TOTAL_STACK = 5242880;
+if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 
 var INITIAL_MEMORY = Module['INITIAL_MEMORY'] || 16777216;legacyModuleProp('INITIAL_MEMORY', 'INITIAL_MEMORY');
 
-assert(INITIAL_MEMORY >= STACK_SIZE, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + STACK_SIZE + ')');
+assert(INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
@@ -737,12 +697,6 @@ var wasmTable;
 function writeStackCookie() {
   var max = _emscripten_stack_get_end();
   assert((max & 3) == 0);
-  // If the stack ends at address zero we write our cookies 4 bytes into the
-  // stack.  This prevents interference with the (separate) address-zero check
-  // below.
-  if (max == 0) {
-    max += 4;
-  }
   // The stack grow downwards towards _emscripten_stack_get_end.
   // We write cookies to the final two words in the stack and detect if they are
   // ever overwritten.
@@ -755,19 +709,13 @@ function writeStackCookie() {
 function checkStackCookie() {
   if (ABORT) return;
   var max = _emscripten_stack_get_end();
-  // See writeStackCookie().
-  if (max == 0) {
-    max += 4;
-  }
   var cookie1 = HEAPU32[((max)>>2)];
   var cookie2 = HEAPU32[(((max)+(4))>>2)];
   if (cookie1 != 0x2135467 || cookie2 != 0x89BACDFE) {
-    abort('Stack overflow! Stack cookie has been overwritten at ' + ptrToString(max) + ', expected hex dwords 0x89BACDFE and 0x2135467, but received ' + ptrToString(cookie2) + ' ' + ptrToString(cookie1));
+    abort('Stack overflow! Stack cookie has been overwritten at 0x' + max.toString(16) + ', expected hex dwords 0x89BACDFE and 0x2135467, but received 0x' + cookie2.toString(16) + ' 0x' + cookie1.toString(16));
   }
   // Also test the global address 0 for integrity.
-  if (HEAPU32[0] !== 0x63736d65 /* 'emsc' */) {
-    abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
-  }
+  if (HEAPU32[0] !== 0x63736d65 /* 'emsc' */) abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
 }
 
 // end include: runtime_stack_check.js
@@ -950,8 +898,10 @@ function removeRunDependency(id) {
 
 /** @param {string|number=} what */
 function abort(what) {
-  if (Module['onAbort']) {
-    Module['onAbort'](what);
+  {
+    if (Module['onAbort']) {
+      Module['onAbort'](what);
+    }
   }
 
   what = 'Aborted(' + what + ')';
@@ -1229,6 +1179,27 @@ var ASM_CONSTS = {
       }
     }
 
+  function withStackSave(f) {
+      var stack = stackSave();
+      var ret = f();
+      stackRestore(stack);
+      return ret;
+    }
+  function demangle(func) {
+      warnOnce('warning: build with -sDEMANGLE_SUPPORT to link in libcxxabi demangling');
+      return func;
+    }
+
+  function demangleAll(text) {
+      var regex =
+        /\b_Z[\w\d_]+/g;
+      return text.replace(regex,
+        function(x) {
+          var y = demangle(x);
+          return x === y ? x : (y + ' [' + x + ']');
+        });
+    }
+
   
     /**
      * @param {number} ptr
@@ -1250,8 +1221,33 @@ var ASM_CONSTS = {
       return null;
     }
 
-  function ptrToString(ptr) {
-      return '0x' + ptr.toString(16).padStart(8, '0');
+  function handleException(e) {
+      // Certain exception types we do not treat as errors since they are used for
+      // internal control flow.
+      // 1. ExitStatus, which is thrown by exit()
+      // 2. "unwind", which is thrown by emscripten_unwind_to_js_event_loop() and others
+      //    that wish to return to JS event loop.
+      if (e instanceof ExitStatus || e == 'unwind') {
+        return EXITSTATUS;
+      }
+      quit_(1, e);
+    }
+
+  function jsStackTrace() {
+      var error = new Error();
+      if (!error.stack) {
+        // IE10+ special cases: It does have callstack info, but it is only
+        // populated if an Error object is thrown, so try that as a special-case.
+        try {
+          throw new Error();
+        } catch(e) {
+          error = e;
+        }
+        if (!error.stack) {
+          return '(no stack trace available)';
+        }
+      }
+      return error.stack.toString();
     }
 
   
@@ -1275,6 +1271,12 @@ var ASM_CONSTS = {
       }
     }
 
+  function stackTrace() {
+      var js = jsStackTrace();
+      if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
+      return demangleAll(js);
+    }
+
   function warnOnce(text) {
       if (!warnOnce.shown) warnOnce.shown = {};
       if (!warnOnce.shown[text]) {
@@ -1282,6 +1284,11 @@ var ASM_CONSTS = {
         if (ENVIRONMENT_IS_NODE) text = 'warning: ' + text;
         err(text);
       }
+    }
+
+  function writeArrayToMemory(array, buffer) {
+      assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
+      HEAP8.set(array, buffer);
     }
 
   function setErrNo(value) {
@@ -1908,28 +1915,8 @@ var ASM_CONSTS = {
   var ERRNO_MESSAGES = {0:"Success",1:"Arg list too long",2:"Permission denied",3:"Address already in use",4:"Address not available",5:"Address family not supported by protocol family",6:"No more processes",7:"Socket already connected",8:"Bad file number",9:"Trying to read unreadable message",10:"Mount device busy",11:"Operation canceled",12:"No children",13:"Connection aborted",14:"Connection refused",15:"Connection reset by peer",16:"File locking deadlock error",17:"Destination address required",18:"Math arg out of domain of func",19:"Quota exceeded",20:"File exists",21:"Bad address",22:"File too large",23:"Host is unreachable",24:"Identifier removed",25:"Illegal byte sequence",26:"Connection already in progress",27:"Interrupted system call",28:"Invalid argument",29:"I/O error",30:"Socket is already connected",31:"Is a directory",32:"Too many symbolic links",33:"Too many open files",34:"Too many links",35:"Message too long",36:"Multihop attempted",37:"File or path name too long",38:"Network interface is not configured",39:"Connection reset by network",40:"Network is unreachable",41:"Too many open files in system",42:"No buffer space available",43:"No such device",44:"No such file or directory",45:"Exec format error",46:"No record locks available",47:"The link has been severed",48:"Not enough core",49:"No message of desired type",50:"Protocol not available",51:"No space left on device",52:"Function not implemented",53:"Socket is not connected",54:"Not a directory",55:"Directory not empty",56:"State not recoverable",57:"Socket operation on non-socket",59:"Not a typewriter",60:"No such device or address",61:"Value too large for defined data type",62:"Previous owner died",63:"Not super-user",64:"Broken pipe",65:"Protocol error",66:"Unknown protocol",67:"Protocol wrong type for socket",68:"Math result not representable",69:"Read only file system",70:"Illegal seek",71:"No such process",72:"Stale file handle",73:"Connection timed out",74:"Text file busy",75:"Cross-device link",100:"Device not a stream",101:"Bad font file fmt",102:"Invalid slot",103:"Invalid request code",104:"No anode",105:"Block device required",106:"Channel number out of range",107:"Level 3 halted",108:"Level 3 reset",109:"Link number out of range",110:"Protocol driver not attached",111:"No CSI structure available",112:"Level 2 halted",113:"Invalid exchange",114:"Invalid request descriptor",115:"Exchange full",116:"No data (for no delay io)",117:"Timer expired",118:"Out of streams resources",119:"Machine is not on the network",120:"Package not installed",121:"The object is remote",122:"Advertise error",123:"Srmount error",124:"Communication error on send",125:"Cross mount point (not really error)",126:"Given log. name not unique",127:"f.d. invalid for this operation",128:"Remote address changed",129:"Can   access a needed shared lib",130:"Accessing a corrupted shared lib",131:".lib section in a.out corrupted",132:"Attempting to link in too many libs",133:"Attempting to exec a shared library",135:"Streams pipe error",136:"Too many users",137:"Socket type not supported",138:"Not supported",139:"Protocol family not supported",140:"Can't send after socket shutdown",141:"Too many references",142:"Host is down",148:"No medium (in tape drive)",156:"Level 2 not synchronized"};
   
   var ERRNO_CODES = {};
-  
-  function withStackSave(f) {
-      var stack = stackSave();
-      var ret = f();
-      stackRestore(stack);
-      return ret;
-    }
-  function demangle(func) {
-      warnOnce('warning: build with -sDEMANGLE_SUPPORT to link in libcxxabi demangling');
-      return func;
-    }
-  function demangleAll(text) {
-      var regex =
-        /\b_Z[\w\d_]+/g;
-      return text.replace(regex,
-        function(x) {
-          var y = demangle(x);
-          return x === y ? x : (y + ' [' + x + ']');
-        });
-    }
   var FS = {root:null,mounts:[],devices:{},streams:[],nextInode:1,nameTable:null,currentPath:"/",initialized:false,ignorePermissions:true,ErrnoError:null,genericErrors:{},filesystems:null,syncFSRequests:0,lookupPath:(path, opts = {}) => {
-        path = PATH_FS.resolve(path);
+        path = PATH_FS.resolve(FS.cwd(), path);
   
         if (!path) return { path: '', node: null };
   
@@ -1943,8 +1930,8 @@ var ASM_CONSTS = {
           throw new FS.ErrnoError(32);
         }
   
-        // split the absolute path
-        var parts = path.split('/').filter((p) => !!p);
+        // split the path
+        var parts = PATH.normalizeArray(path.split('/').filter((p) => !!p), false);
   
         // start at the root
         var current = FS.root;
@@ -3826,11 +3813,6 @@ var ASM_CONSTS = {
       return func;
     }
   
-  function writeArrayToMemory(array, buffer) {
-      assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
-      HEAP8.set(array, buffer);
-    }
-  
     /**
      * @param {string|null=} returnType
      * @param {Array=} argTypes
@@ -4133,11 +4115,6 @@ var stackRestore = Module["stackRestore"] = createExportWrapper("stackRestore");
 var stackAlloc = Module["stackAlloc"] = createExportWrapper("stackAlloc");
 
 /** @type {function(...*):?} */
-var _emscripten_stack_get_current = Module["_emscripten_stack_get_current"] = function() {
-  return (_emscripten_stack_get_current = Module["_emscripten_stack_get_current"] = Module["asm"]["emscripten_stack_get_current"]).apply(null, arguments);
-};
-
-/** @type {function(...*):?} */
 var dynCall_jiji = Module["dynCall_jiji"] = createExportWrapper("dynCall_jiji");
 
 
@@ -4176,8 +4153,8 @@ var unexportedRuntimeSymbols = [
   'registerFunctions',
   'prettyPrint',
   'getCompilerSetting',
-  'out',
-  'err',
+  'print',
+  'printErr',
   'callMain',
   'abort',
   'keepRuntimeAlive',
@@ -4393,6 +4370,7 @@ var unexportedRuntimeSymbols = [
 ];
 unexportedRuntimeSymbols.forEach(unexportedRuntimeSymbol);
 var missingLibrarySymbols = [
+  'ptrToString',
   'stringToNewUTF8',
   'emscripten_realloc_buffer',
   'inetPton4',
@@ -4414,7 +4392,6 @@ var missingLibrarySymbols = [
   'dynCallLegacy',
   'getDynCaller',
   'dynCall',
-  'handleException',
   'runtimeKeepalivePush',
   'runtimeKeepalivePop',
   'callUserCallback',
@@ -4500,8 +4477,6 @@ var missingLibrarySymbols = [
   'registerBatteryEventCallback',
   'setCanvasElementSize',
   'getCanvasElementSize',
-  'jsStackTrace',
-  'stackTrace',
   'getEnvStrings',
   'checkWasiClock',
   'createDyncallWrapper',
