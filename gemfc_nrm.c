@@ -30,10 +30,12 @@ void load_graph(FILE* fil_para, Graph* graph);
 void pre_init_graph(FILE* fil_para, Graph* graph);
 void init_para(FILE* fil_para, Graph* graph, Transition* tran, Status* sts, Run* run, int echo);
 void initi_status(FILE* fil_para, Graph* graph, Status* sts, int echo);
-int main() {
+int main(int argc, char* argv[] ) {
+#if defined GEMFWASM
     return 0;
 }
-int run_gemf(int argc,char* argv[] ) {
+int run_gemf(int argc, char* argv[] ) {
+#endif
     FILE* fil_para= NULL;
     int ret;
     int echo= 1;
