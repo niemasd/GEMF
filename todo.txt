@@ -40,3 +40,13 @@ problem 2-2: can't run GEMF
 solution 2-2: modify python wrapper again, so that instead of calling GEMF, just writes files (hopefully to the same filesystem of GEMF WASM code), triggers a flag or something that is received by the JS, which then runs GEMF'
 
 note: tried to py -> cython -> c -> wasm -> js (in-browser-able) it, ran into a bunch of problems, more difficult than solutions listed above
+
+
+
+
+ultimate integration plan:
+implement infected states into GEMF-Designer
+load onto the GEMF tool, which prompts for a bunch of inputs to run
+GEMF-Designer is there to help with the creation of INFECTED_STATES and RATES
+After loading in all options, can hit "RUN"
+this all creates part of step 3, transmissions, for FAVITES
