@@ -1,3 +1,15 @@
+12/27 UPDATE:
+
+to fix:
+refactor code
+update Niema on GEMF sys import modification
+discuss how part of GEMF_FAVITES is no longer needed / new interaction
+actually create UI 
+get rid of example dir
+get rid of useless functions
+
+FROM PAST: 
+
 - convert to FAVITES
     - can run python code in the browser, but can't pass in command line arguments
         - make a package or something? 
