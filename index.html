@@ -38,9 +38,39 @@
         </div>
         <script async src="GEMF.js"></script>
         <script>
-            async function main(){
-                let pyodide = await loadPyodide();
-                pyodide.runPython(await (await fetch("http://localhost:8000/GEMF_FAVITES.py")).text())
+            const SITE_HOST = "https://daniel-ji.github.io/GEMF/";
+            const TEST_HOST = "http://localhost:8000/";
+            const PYODIDE_FOLDER = "pyodide";
+            const PATH_TO_PYODIDE_ROOT = PYODIDE_FOLDER + "/home/pyodide/";
+            let pyodide = undefined;
+
+            const main = async () => {
+                const pyWriteFile = async (fileName) => {
+                    FS.writeFile(PATH_TO_PYODIDE_ROOT + fileName, await (await fetch(TEST_HOST + fileName)).text(), {encoding: "utf8"});
+                }
+
+                pyodide = await loadPyodide();
+                FS.mkdir(PYODIDE_FOLDER);
+                FS.mount(pyodide.FS.filesystems.PROXYFS, {
+                        root: "/",
+                        fs: pyodide.FS
+                }, PYODIDE_FOLDER)
+                pyodide.globals.set("arguments", './GEMF_FAVITES.py -c example/contact_network_complete.tsv -s example/initial_states_seir.tsv -i example/infected_states_seir.txt -r example/rates_seir.tsv -t 100 -o output --gemf_path ../GEMF');
+                pyodide.FS.mkdir('example');
+                await pyWriteFile("example/contact_network_complete.tsv")
+                await pyWriteFile("example/initial_states_seir.tsv")
+                await pyWriteFile("example/infected_states_seir.txt")
+                await pyWriteFile("example/rates_seir.tsv")
+                await pyWriteFile("GEMF_FAVITES.py")
+                await pyWriteFile("GEMF");
+
+                try {
+                    pyodide.runPython(await (await fetch(TEST_HOST + "GEMF_FAVITES_WEB.py")).text())
+                } catch (e) {
+                    console.log(e);
+                }
+
+                runGEMF();
             }
             main();
 
@@ -71,9 +101,9 @@
             const runGEMF = () => {
                 if (ready) {
                     try {
-                        writeFile("parameter", "para.txt")();
-                        writeFile("network", "network.txt")();
-                        writeFile("status", "status.txt")();
+                        FS.symlink(PATH_TO_PYODIDE_ROOT + "/output/para.txt", "para.txt");
+                        FS.symlink(PATH_TO_PYODIDE_ROOT + "/output/network.txt", "network.txt");
+                        FS.symlink(PATH_TO_PYODIDE_ROOT + "/output/status.txt", "status.txt");
                         FS.writeFile('output.txt', '');
 
                         const consoleTxt = document.getElementById("console");
@@ -86,7 +116,7 @@
                             Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
                         }, 1000);
                     } catch (err) {
-                        alert("Error running GEMF. Please ensure valid input files.");
+                        console.log(err);
                     }
                 }
             }
