@@ -1,5 +1,7 @@
 TODO: 
 Add validation
+End time default? does it have to be an int? 
+Add input regex?  
 Add file preview? edit?
 Add help guide? 
 

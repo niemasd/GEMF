@@ -13,19 +13,19 @@
             <div class="d-flex flex-wrap justify-content-center">
                 <div class="mb-3 mx-3 file-input">
                     <label for="contactNetwork" class="form-label">Contact Network File *</label>
-                    <input type="file" id="contactNetwork" class="form-control">
+                    <input type="file" id="contactNetwork" class="form-control fileUpload">
                 </div>
                 <div class="mx-3 mb-3 file-input">
                     <label for="initialStates" class="form-label">Initial States File *</label>
-                    <input type="file" id="initialStates" name="initialStates" class="form-control">
+                    <input type="file" id="initialStates" name="initialStates" class="form-control fileUpload">
                 </div>
                 <div class="mx-3 mb-3 file-input">
                     <label for="infectedStates" class="form-label">Infected States File *</label>
-                    <input type="file" id="infectedStates" name="infectedStates" class="form-control">
+                    <input type="file" id="infectedStates" name="infectedStates" class="form-control fileUpload">
                 </div>
                 <div class="mx-3 mb-3 file-input">
                     <label for="rates" class="form-label">Rates File *</label>
-                    <input type="file" id="rates" name="rates" class="form-control">
+                    <input type="file" id="rates" name="rates" class="form-control fileUpload">
                 </div>
             </div>
                 <div class="mb-3 mx-3">
@@ -93,6 +93,10 @@
              * 
             */
             const runGEMFFAVITES = async () => {
+                if (!validInput()) {
+                    return;
+                }
+
                 /** Pyodide Initialization */
                 pyodide = await loadPyodide({
                     stdout: (text) => {
@@ -207,6 +211,33 @@
                         console.log(err);
                     }
                 }
+            }
+
+            const validInput = () => {
+                let valid = true;
+                for (const input of document.getElementsByClassName("fileUpload")) {
+                    if (input.value === "") {
+                        input.classList.add("border");
+                        input.classList.add("border-danger");
+                        valid = false;
+                    } else {
+                        input.classList.remove("border");
+                        input.classList.remove("border-danger");
+                    }
+                }
+
+                const endTime = document.getElementById("endTime");
+                if (endTime.value === "" || 
+                parseInt(endTime.value) < 0) {
+                    valid = false;
+                    endTime.classList.add("border");
+                    endTime.classList.add("border-danger");
+                } else {
+                    endTime.classList.remove("border");
+                    endTime.classList.remove("border-danger");
+                }
+
+                return valid;
             }
 
             // closure function for writing text to files
