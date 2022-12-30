@@ -1,28 +1,66 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>GEMF Online Tool</title>
+        <title>GEMF FAVITES Online Tool</title>
+        <link rel="icon" type="image/x-icon" href="/favicon.ico">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
         <script src="https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js"></script>
         <link rel="stylesheet" href="index.css">
     </head>
     <body>
-        <h1 class="my-5">GEMF Online Tool</h1>
-        <div id="input-container">
-            <div class="mb-3 mx-3">
-                <label for="parameter" class="form-label">Parameter file</label>
-                <input type="file" id="parameter" class="form-control">
+        <h1 class="my-5">GEMF FAVITES Online Tool</h1>
+        <div id="input-container" class="mb-5">
+            <div class="d-flex flex-wrap justify-content-center">
+                <div class="mb-3 mx-3 file-input">
+                    <label for="contactNetwork" class="form-label">Contact Network File *</label>
+                    <input type="file" id="contactNetwork" class="form-control">
+                </div>
+                <div class="mx-3 mb-3 file-input">
+                    <label for="initialStates" class="form-label">Initial States File *</label>
+                    <input type="file" id="initialStates" name="initialStates" class="form-control">
+                </div>
+                <div class="mx-3 mb-3 file-input">
+                    <label for="infectedStates" class="form-label">Infected States File *</label>
+                    <input type="file" id="infectedStates" name="infectedStates" class="form-control">
+                </div>
+                <div class="mx-3 mb-3 file-input">
+                    <label for="rates" class="form-label">Rates File *</label>
+                    <input type="file" id="rates" name="rates" class="form-control">
+                </div>
             </div>
-            <div class="mx-3 mb-3">
-                <label for="network" class="form-label">Network file</label>
-                <input type="file" id="network" name="network" class="form-control">
+                <div class="mb-3 mx-3">
+                    <label class="form-label" for="endTime">End Time *</label>
+                    <div class="input-group number-input">
+                        <input id="endTime" type="number" class="form-control" placeholder="End Time" aria-label="End Time">
+                    </div>
+                </div>
+                <div class="mb-3 mx-3">
+                    <label class="form-label" for="endTime">Max Events (Default: 4294967295)</label>
+                    <div class="input-group number-input">
+                        <input id="maxEvents" type="number" class="form-control" placeholder="Max Events" aria-label="Max Events">
+                    </div>
+                </div>
+                <div class="mb-3 mx-3">
+                    <label class="form-label"  for="rngSeed">RNG Seed (Default: None)</label>
+                    <div class="input-group number-input">
+                        <input id="rngSeed" type="number" class="form-control" placeholder="RNG Seed" aria-label="RNG Seed">
+                    </div>
+                </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" value="" id="outputAll">
+                <label class="form-check-label" for="outputAll">
+                    Output All Transitions? 
+                </label>
             </div>
-            <div class="mx-3 mb-3">
-                <label for="status" class="form-label">Status file</label>
-                <input type="file" id="status" name="status" class="form-control">
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" value="" id="quiet">
+                <label class="form-check-label" for="quiet">
+                    Suppress Log Messages?  
+                </label>
             </div>
+            <p>* Required</p>
         </div>
-        <button type="button" class="btn btn-primary" onclick="runGEMF()">RUN GEMF</button>
+        <button type="button" class="btn btn-primary" onclick="runGEMFFAVITES()">RUN GEMF_FAVITES</button>
         <br>
         <button type="button" class="btn btn-success" onclick="downloadResults()">Download Results</button>
         <br>
@@ -38,79 +76,127 @@
         </div>
         <script async src="GEMF.js"></script>
         <script>
-            const SITE_HOST = "https://daniel-ji.github.io/GEMF/";
-            const TEST_HOST = "http://localhost:8000/";
             const PYODIDE_FOLDER = "pyodide";
+            // directory for where pyodide writes files 
             const PATH_TO_PYODIDE_ROOT = PYODIDE_FOLDER + "/home/pyodide/";
             let pyodide = undefined;
 
-            const main = async () => {
-                const pyWriteFile = async (fileName) => {
-                    FS.writeFile(PATH_TO_PYODIDE_ROOT + fileName, await (await fetch(TEST_HOST + fileName)).text(), {encoding: "utf8"});
-                }
-
-                pyodide = await loadPyodide();
+            /**
+             * Function that runs GEMF_FAVITES.
+             * 1. Loads pyodide and mounts its filesystem onto the main FS module.
+             * 2. Sets arguments to be passed to GEMF_FAVITES.
+             * 3. Writes appropriate files to filesystem. 
+             * 4. Runs GEMF_FAVITES, which creates output files to be passed into GEMF.
+             * 5. Runs GEMF function.  
+             * 
+            */
+            const runGEMFFAVITES = async () => {
+                /** Pyodide Initialization */
+                pyodide = await loadPyodide({
+                    stdout: (text) => {
+                        const consoleTxt = document.getElementById("console");
+                        consoleTxt.value += "stdout: \t" + text + "\n";
+                    },
+                    stderr: (text) => {
+                        const consoleTxt = document.getElementById("console");
+                        consoleTxt.value += "stderr: \t" + text + "\n";
+                    }
+                });
+                // create the folder to mount pyodide to
                 FS.mkdir(PYODIDE_FOLDER);
+                // mount pyodide
                 FS.mount(pyodide.FS.filesystems.PROXYFS, {
                         root: "/",
                         fs: pyodide.FS
                 }, PYODIDE_FOLDER)
-                pyodide.globals.set("arguments", './GEMF_FAVITES.py -c example/contact_network_complete.tsv -s example/initial_states_seir.tsv -i example/infected_states_seir.txt -r example/rates_seir.tsv -t 100 -o output --gemf_path ../GEMF');
-                pyodide.FS.mkdir('example');
-                await pyWriteFile("example/contact_network_complete.tsv")
-                await pyWriteFile("example/initial_states_seir.tsv")
-                await pyWriteFile("example/infected_states_seir.txt")
-                await pyWriteFile("example/rates_seir.tsv")
-                await pyWriteFile("GEMF_FAVITES.py")
-                await pyWriteFile("GEMF");
+                // sets arguments variable, which will replace sys.argv when running GEMF_FAVITES on the browser
+                let arguments = './GEMF_FAVITES.py -c contact_network.tsv -s initial_states.tsv -i infected_states.txt -r rates.tsv -o output';
+                // add time argument
+                arguments += ' -t ' + document.getElementById("endTime").value;
+                // add max events
+                const maxEvents = document.getElementById("maxEvents").value;
+                if (maxEvents !== '') {
+                    arguments += ' --max_events ' + maxEvents; 
+                }
+                // add rng seed
+                const rngSeed = document.getElementById("rngSeed").value;
+                if (rngSeed !== '') {
+                    arguments += ' --rng_seed ' + rngSeed; 
+                }
+                // add output all transitions flag
+                if (document.getElementById("outputAll").checked) {
+                    arguments += ' --output_all_transitions';
+                }
+                // add quiet flag
+                if (document.getElementById("quiet").checked) {
+                    arguments += " --quiet";
+                }
+                pyodide.globals.set("arguments", arguments);
 
+                // creating appropriate files to run GEMF_FAVITES
+                writeFile("contactNetwork", "contact_network.tsv", true)();
+                writeFile("initialStates", "initial_states.tsv", true)();
+                writeFile("infectedStates", "infected_states.txt", true)();
+                writeFile("rates", "rates.tsv", true)();
+                FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch('/GEMF_FAVITES.py')).text(), {encoding: "utf8"});
+
+                // reset text / output
+                document.getElementById("console").value = "RUNNING GEMF_FAVITES: \n";
+                document.getElementById("output").value = "";
+
+                // run GEMF_FAVITES 
                 try {
-                    pyodide.runPython(await (await fetch(TEST_HOST + "GEMF_FAVITES_WEB.py")).text())
+                    pyodide.runPython(await (await fetch("/GEMF_FAVITES_WEB.py")).text())
                 } catch (e) {
                     console.log(e);
                 }
 
                 runGEMF();
             }
-            main();
 
-            let ready = false;
+            // ensure GEMF WASM is ready before running
+            let GEMFReady = false;
+            // output of GEMF
             let output = undefined;
 
             // global module object from GEMF.js
             Module = {
+                // when something is printed to GEMF's stdout
                 print: (text) => {
                     const consoleTxt = document.getElementById("console");
                     consoleTxt.value += "stdout: \t" + text + "\n";
-                    // on finish
+                    // on GEMF finish
                     if (text.includes("simulation success!")) {
                         output = new TextDecoder().decode(FS.readFile('output.txt'));
                         const outputArea = document.getElementById("output");
                         outputArea.value = output;
                     }
                 },
+                // when something is printed to GEMF's stderr
                 printErr: (text) => {
                     const consoleTxt = document.getElementById("console");
                     consoleTxt.value += "stderr: \t" + text + "\n";
                 },
                 onRuntimeInitialized: () => {
-                    ready = true;
+                    GEMFReady = true;
                 }
             }
 
+            /**
+             * Function that runs GEMF.wasm. 
+             * 1. Links required files to the corresponding files created by pyodide. 
+             * 2. Creates output file. 
+             * 3. Clears previous console / output. 
+             * 4. Runs GEMF after a delay (ensures that files are all created).
+            */
             const runGEMF = () => {
-                if (ready) {
+                if (GEMFReady) {
                     try {
                         FS.symlink(PATH_TO_PYODIDE_ROOT + "/output/para.txt", "para.txt");
                         FS.symlink(PATH_TO_PYODIDE_ROOT + "/output/network.txt", "network.txt");
                         FS.symlink(PATH_TO_PYODIDE_ROOT + "/output/status.txt", "status.txt");
                         FS.writeFile('output.txt', '');
-
-                        const consoleTxt = document.getElementById("console");
-                        const output = document.getElementById("output");
-                        consoleTxt.value = "";
-                        output.value = "";
-
+                        
                         // TODO: time-based right now, change to callback-based
                         setTimeout(() => {
                             Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
@@ -122,12 +208,12 @@
             }
 
             // closure function for writing text to files
-            const writeFile = (id, fileName) => {
+            const writeFile = (id, fileName, pyodide = false) => {
                 return () => {
                     const input = document.getElementById(id).files[0];
                     const reader = new FileReader();
                     reader.onload = function() {
-                        FS.writeFile(fileName, reader.result);
+                        FS.writeFile((pyodide ? PATH_TO_PYODIDE_ROOT : '') + fileName, reader.result);
                         // clear so that the reader will run again for new files, even if same name
                         document.getElementById(id).value = "";
                     }
