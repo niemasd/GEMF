@@ -76,6 +76,8 @@
         </div>
         <script async src="GEMF.js"></script>
         <script>
+            const SITE_HOST = "https://daniel-ji.github.io/GEMF/";
+            const TEST_HOST = "http://localhost:8000/";
             const PYODIDE_FOLDER = "pyodide";
             // directory for where pyodide writes files 
             const PATH_TO_PYODIDE_ROOT = PYODIDE_FOLDER + "/home/pyodide/";
@@ -138,7 +140,7 @@
                 writeFile("initialStates", "initial_states.tsv", true)();
                 writeFile("infectedStates", "infected_states.txt", true)();
                 writeFile("rates", "rates.tsv", true)();
-                FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch('/GEMF_FAVITES.py')).text(), {encoding: "utf8"});
+                FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch(SITE_HOST + 'GEMF_FAVITES.py')).text(), {encoding: "utf8"});
 
                 // reset text / output
                 document.getElementById("console").value = "RUNNING GEMF_FAVITES: \n";
@@ -146,7 +148,7 @@
 
                 // run GEMF_FAVITES 
                 try {
-                    pyodide.runPython(await (await fetch("/GEMF_FAVITES_WEB.py")).text())
+                    pyodide.runPython(await (await fetch(SITE_HOST + "GEMF_FAVITES_WEB.py")).text())
                 } catch (e) {
                     console.log(e);
                 }
