@@ -1,3 +1,27 @@
+TODO: 
+Add validation
+Add file preview? edit?
+Add help guide? 
+
+12/29:
+- Add comments / refactored 
+- Question: Do we need to implement this in React?
+    - For now, will continue to work with HTML/JS
+- Add necessary inputs and made them adjust arguments
+    ui: 4 files, 5 variables
+        CONTACT_NETWORK file
+        INITIAL STATES file
+        INFECTED_STATES file
+        RATES file
+
+        END_TIME number input 
+        MAX_EVENTS number input
+        Output_all_transitions boolean input
+        Quiet boolean input
+        RNG_SEED number input
+- Made UI cleaner
+- Added a favicon LOL
+
 12/27 UPDATE:
 
 to fix:
@@ -46,15 +70,11 @@ solutions:
 		--rng_seed RNG_SEED
 		--gemf_path GEMF_PATH
 
-
 problem 2-2: can't run GEMF
 
 solution 2-2: modify python wrapper again, so that instead of calling GEMF, just writes files (hopefully to the same filesystem of GEMF WASM code), triggers a flag or something that is received by the JS, which then runs GEMF'
 
 note: tried to py -> cython -> c -> wasm -> js (in-browser-able) it, ran into a bunch of problems, more difficult than solutions listed above
-
-
-
 
 ultimate integration plan:
 implement infected states into GEMF-Designer
