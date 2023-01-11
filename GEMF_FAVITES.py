@@ -10,9 +10,9 @@ from json import dump as jdump
 from os import chdir, getcwd, makedirs
 from os.path import abspath, expanduser, isdir, isfile
 from subprocess import call
-from sys import argv, stdout
 import argparse
 import random
+import sys
 
 # useful variables
 VERSION = '1.0.3'
@@ -49,7 +49,7 @@ def print_log(s='', end='\n'):
         `end` (`str`): Line termination string
     '''
     tmp = "[%s] %s" % (get_time(), s)
-    print(tmp, end=end); stdout.flush()
+    print(tmp, end=end); sys.stdout.flush()
 
 def parse_args():
     '''
@@ -59,7 +59,7 @@ def parse_args():
         `argparse.ArgumentParser`: Parsed user arguments
     '''
     # user runs with no args (place-holder if I want to add GUI in future)
-    if len(argv) == 1:
+    if len(sys.argv) == 1:
         pass
 
     # parse user args
@@ -456,7 +456,7 @@ def main():
     '''
     Main function
     '''
-    if len(argv) > 1 and argv[1].lower().lstrip('-') == 'version':
+    if len(sys.argv) > 1 and sys.argv[1].lower().lstrip('-') == 'version':
         print("GEMF_FAVITES v%s" % VERSION); exit()
     args = parse_args(); check_args(args)
     if not args.quiet:
