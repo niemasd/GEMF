@@ -9,7 +9,7 @@ from datetime import datetime
 from json import dump as jdump
 from os import chdir, getcwd, makedirs
 from os.path import abspath, expanduser, isdir, isfile
-from subprocess import call
+import subprocess
 import sys
 import argparse
 import random
@@ -361,7 +361,7 @@ def run_gemf(outdir, log_fn, gemf_path=DEFAULT_GEMF_PATH):
     orig_dir = getcwd()
     chdir(outdir)
     stdout = sys.stdout
-    log_f = open(log_fn, 'w'); call([gemf_path], stdout=log_f); log_f.close()
+    log_f = open(log_fn, 'w'); subprocess.call([gemf_path], stdout=log_f); log_f.close()
     chdir(orig_dir)
     return log_f
 

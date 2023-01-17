@@ -138,13 +138,15 @@
                     arguments += " --quiet";
                 }
                 pyodide.globals.set("arguments", arguments);
+                pyodide.globals.set("runGEMF", runGEMF);
 
                 // creating appropriate files to run GEMF_FAVITES
                 writeFile("contactNetwork", "contact_network.tsv", true)();
                 writeFile("initialStates", "initial_states.tsv", true)();
                 writeFile("infectedStates", "infected_states.txt", true)();
                 writeFile("rates", "rates.tsv", true)();
-                FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch(SITE_HOST + 'GEMF_FAVITES.py')).text(), {encoding: "utf8"});
+                FS.writeFile('output.txt', '');
+                FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch(TEST_HOST + 'GEMF_FAVITES.py')).text(), {encoding: "utf8"});
 
                 // reset text / output
                 document.getElementById("console").value = "RUNNING GEMF_FAVITES: \n";
@@ -152,12 +154,11 @@
 
                 // run GEMF_FAVITES 
                 try {
-                    pyodide.runPython(await (await fetch(SITE_HOST + "GEMF_FAVITES_WEB.py")).text())
+                    pyodide.runPython(await (await fetch(TEST_HOST + "GEMF_FAVITES_WEB.py")).text())
                 } catch (e) {
                     console.log(e);
                 }
 
-                runGEMF();
             }
 
             // ensure GEMF WASM is ready before running
@@ -176,6 +177,7 @@
                         output = new TextDecoder().decode(FS.readFile('output.txt'));
                         const outputArea = document.getElementById("output");
                         outputArea.value = output;
+                        pyodide.FS.writeFile("output.txt", output);
                     }
                 },
                 // when something is printed to GEMF's stderr
@@ -198,15 +200,11 @@
             const runGEMF = () => {
                 if (GEMFReady) {
                     try {
-                        FS.symlink(PATH_TO_PYODIDE_ROOT + "/output/para.txt", "para.txt");
-                        FS.symlink(PATH_TO_PYODIDE_ROOT + "/output/network.txt", "network.txt");
-                        FS.symlink(PATH_TO_PYODIDE_ROOT + "/output/status.txt", "status.txt");
-                        FS.writeFile('output.txt', '');
-                        
-                        // TODO: time-based right now, change to callback-based
-                        setTimeout(() => {
-                            Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
-                        }, 1000);
+                        FS.symlink(PATH_TO_PYODIDE_ROOT + "output/para.txt", "para.txt");
+                        FS.symlink(PATH_TO_PYODIDE_ROOT + "output/network.txt", "network.txt");
+                        FS.symlink(PATH_TO_PYODIDE_ROOT + "output/status.txt", "status.txt");
+                
+                        Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
                     } catch (err) {
                         console.log(err);
                     }
