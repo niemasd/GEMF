@@ -41,7 +41,7 @@ body {
     height: 60vh;
 }
 
-#output, #console {
+.container-text {
     width: 100%;
     height: 100%;
 }

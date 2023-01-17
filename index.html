@@ -67,13 +67,24 @@
         <div id="text-containers">
             <div id="console-container">
                 <h3>Console</h3>
-                <textarea id="console" class="form-control"></textarea>
+                <textarea id="console" class="form-control container-text"></textarea>
             </div>
             <div id="output-container">
                 <h3>Final Results (Output.txt)</h3>
-                <textarea id="output" class="form-control"></textarea>
+                <textarea id="output" class="form-control container-text"></textarea>
             </div>
         </div>
+        <div id="text-containers">
+            <div id="console-container">
+                <h3>Transmission Network Results</h3>
+                <textarea id="transNetwork" class="form-control container-text"></textarea>
+            </div>
+            <div id="output-container">
+                <h3>All Transitions Results</h3>
+                <textarea id="allTransitions" class="form-control container-text"></textarea>
+            </div>
+        </div>
+
         <script async src="GEMF.js"></script>
         <script>
             const SITE_HOST = window.location.href.includes("https") ? "https://daniel-ji.github.io/GEMF/" : "http://localhost:8000/";
@@ -168,10 +179,24 @@
                 // reset text / output
                 document.getElementById("console").value = "RUNNING GEMF_FAVITES: \n";
                 document.getElementById("output").value = "";
+                document.getElementById("transNetwork").value = "";
+                document.getElementById("allTransitions").value = "";
 
                 // run GEMF_FAVITES 
                 try {
                     pyodide.runPython(await (await fetch(SITE_HOST + "GEMF_FAVITES_WEB.py")).text())
+
+                    if (FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
+                        const allTransitions = new TextDecoder().decode(FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/all_state_transitions.txt'));
+                        const allTransitionsArea = document.getElementById("allTransitions");
+                        allTransitionsArea.value = allTransitions;
+                        console.log(allTransitions);
+                    }
+
+                    const transNetwork = new TextDecoder().decode(FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
+                    const transNetworkArea = document.getElementById("transNetwork");
+                    transNetworkArea.value = transNetwork;
+                    console.log(transNetwork);
                 } catch (e) {
                     console.log(e);
                 }
