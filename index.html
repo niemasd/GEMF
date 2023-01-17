@@ -82,6 +82,29 @@
             const PATH_TO_PYODIDE_ROOT = PYODIDE_FOLDER + "/home/pyodide/";
             let pyodide = undefined;
 
+            const initializePyodide = async () => {
+                pyodide = await loadPyodide({
+                    stdout: (text) => {
+                        const consoleTxt = document.getElementById("console");
+                        consoleTxt.value += "stdout: \t" + text + "\n";
+                        console.log(text)
+                    },
+                    stderr: (text) => {
+                        const consoleTxt = document.getElementById("console");
+                        consoleTxt.value += "stderr: \t" + text + "\n";
+                    }
+                });
+                // create the folder to mount pyodide to
+                FS.mkdir(PYODIDE_FOLDER);
+                // mount pyodide
+                FS.mount(FS.filesystems.PROXYFS, {
+                        root: "/",
+                        fs: pyodide.FS
+                }, PYODIDE_FOLDER)
+            }
+
+            initializePyodide();
+
             /**
              * Function that runs GEMF_FAVITES.
              * 1. Loads pyodide and mounts its filesystem onto the main FS module.
@@ -95,25 +118,20 @@
                 if (!validInput()) {
                     return;
                 }
-
-                /** Pyodide Initialization */
-                pyodide = await loadPyodide({
-                    stdout: (text) => {
-                        const consoleTxt = document.getElementById("console");
-                        consoleTxt.value += "stdout: \t" + text + "\n";
-                    },
-                    stderr: (text) => {
-                        const consoleTxt = document.getElementById("console");
-                        consoleTxt.value += "stderr: \t" + text + "\n";
+                
+                if (FS.readdir(PATH_TO_PYODIDE_ROOT).includes("output")) {
+                    for (const file of FS.readdir(PATH_TO_PYODIDE_ROOT + "output")) {
+                        if (file === "." || file === "..") {
+                            continue; 
+                        }
+                        FS.unlink(PATH_TO_PYODIDE_ROOT + "output/" + file);
                     }
-                });
-                // create the folder to mount pyodide to
-                FS.mkdir(PYODIDE_FOLDER);
-                // mount pyodide
-                FS.mount(pyodide.FS.filesystems.PROXYFS, {
-                        root: "/",
-                        fs: pyodide.FS
-                }, PYODIDE_FOLDER)
+                    FS.rmdir(PATH_TO_PYODIDE_ROOT + "output")
+                    FS.unlink("para.txt")
+                    FS.unlink("status.txt")
+                    FS.unlink("network.txt")
+                }
+
                 // sets arguments variable, which will replace sys.argv when running GEMF_FAVITES on the browser
                 let arguments = './GEMF_FAVITES.py -c contact_network.tsv -s initial_states.tsv -i infected_states.txt -r rates.tsv -o output';
                 // add time argument
@@ -176,7 +194,7 @@
                         output = new TextDecoder().decode(FS.readFile('output.txt'));
                         const outputArea = document.getElementById("output");
                         outputArea.value = output;
-                        pyodide.FS.writeFile("output.txt", output);
+                        FS.writeFile(PATH_TO_PYODIDE_ROOT + "/output/output.txt", output);
                     }
                 },
                 // when something is printed to GEMF's stderr
@@ -202,7 +220,7 @@
                         FS.symlink(PATH_TO_PYODIDE_ROOT + "output/para.txt", "para.txt");
                         FS.symlink(PATH_TO_PYODIDE_ROOT + "output/network.txt", "network.txt");
                         FS.symlink(PATH_TO_PYODIDE_ROOT + "output/status.txt", "status.txt");
-                
+
                         Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
                     } catch (err) {
                         console.log(err);
