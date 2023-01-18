@@ -2,7 +2,7 @@
 <html>
     <head>
         <title>GEMF FAVITES Online Tool</title>
-        <link rel="icon" type="image/x-icon" href="/favicon.ico">
+        <link rel="icon" type="image/x-icon" href="./favicon.ico">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
         <script src="https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js"></script>
         <link rel="stylesheet" href="index.css">
@@ -13,37 +13,37 @@
             <div class="d-flex flex-wrap justify-content-center">
                 <div class="mb-3 mx-3 file-input">
                     <label for="contactNetwork" class="form-label">Contact Network File *</label>
-                    <input type="file" id="contactNetwork" class="form-control fileUpload">
+                    <input onChange="validInput()" type="file" id="contactNetwork" class="form-control fileUpload">
                 </div>
                 <div class="mx-3 mb-3 file-input">
                     <label for="initialStates" class="form-label">Initial States File *</label>
-                    <input type="file" id="initialStates" name="initialStates" class="form-control fileUpload">
+                    <input onChange="validInput()" type="file" id="initialStates" name="initialStates" class="form-control fileUpload">
                 </div>
                 <div class="mx-3 mb-3 file-input">
                     <label for="infectedStates" class="form-label">Infected States File *</label>
-                    <input type="file" id="infectedStates" name="infectedStates" class="form-control fileUpload">
+                    <input onChange="validInput()" type="file" id="infectedStates" name="infectedStates" class="form-control fileUpload">
                 </div>
                 <div class="mx-3 mb-3 file-input">
                     <label for="rates" class="form-label">Rates File *</label>
-                    <input type="file" id="rates" name="rates" class="form-control fileUpload">
+                    <input onChange="validInput()" type="file" id="rates" name="rates" class="form-control fileUpload">
                 </div>
             </div>
                 <div class="mb-3 mx-3">
                     <label class="form-label" for="endTime">End Time *</label>
                     <div class="input-group number-input">
-                        <input id="endTime" type="number" class="form-control" placeholder="End Time" aria-label="End Time">
+                        <input onChange="validInput()" id="endTime" type="number" class="form-control" placeholder="End Time" aria-label="End Time">
                     </div>
                 </div>
                 <div class="mb-3 mx-3">
                     <label class="form-label" for="endTime">Max Events (Default: 4294967295)</label>
                     <div class="input-group number-input">
-                        <input id="maxEvents" type="number" class="form-control" placeholder="Max Events" aria-label="Max Events">
+                        <input onChange="validInput()" id="maxEvents" type="number" class="form-control" placeholder="Max Events" aria-label="Max Events">
                     </div>
                 </div>
                 <div class="mb-3 mx-3">
                     <label class="form-label"  for="rngSeed">RNG Seed (Default: None)</label>
                     <div class="input-group number-input">
-                        <input id="rngSeed" type="number" class="form-control" placeholder="RNG Seed" aria-label="RNG Seed">
+                        <input onChange="validInput()" id="rngSeed" type="number" class="form-control" placeholder="RNG Seed" aria-label="RNG Seed">
                     </div>
                 </div>
             <div class="form-check mb-3">
@@ -92,6 +92,7 @@
             // directory for where pyodide writes files 
             const PATH_TO_PYODIDE_ROOT = PYODIDE_FOLDER + "/home/pyodide/";
             let pyodide = undefined;
+            let triedToRun = false;
 
             const initializePyodide = async () => {
                 pyodide = await loadPyodide({
@@ -126,6 +127,8 @@
              * 
             */
             const runGEMFFAVITES = async () => {
+                triedToRun = true;
+
                 if (!validInput()) {
                     return;
                 }
@@ -254,6 +257,10 @@
             }
 
             const validInput = () => {
+                if (!triedToRun) {
+                    return;
+                }
+
                 let valid = true;
                 for (const input of document.getElementsByClassName("fileUpload")) {
                     if (input.value === "") {
@@ -266,16 +273,22 @@
                     }
                 }
 
-                const endTime = document.getElementById("endTime");
-                if (endTime.value === "" || 
-                parseInt(endTime.value) < 0) {
-                    valid = false;
-                    endTime.classList.add("border");
-                    endTime.classList.add("border-danger");
-                } else {
-                    endTime.classList.remove("border");
-                    endTime.classList.remove("border-danger");
+                const validNumber = (id, required = true) => {
+                    const element = document.getElementById(id);
+                    console.log(element.value)
+                    if ((element.value === "" && !required) || (element.value !== "" && parseInt(element.value) >= 0)) {
+                        element.classList.remove("border");
+                        element.classList.remove("border-danger");
+                    } else {
+                        valid = false;
+                        element.classList.add("border");
+                        element.classList.add("border-danger");
+                    }
                 }
+
+                validNumber("endTime");
+                validNumber("maxEvents", false);
+                validNumber("rngSeed", false);
 
                 return valid;
             }
