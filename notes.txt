@@ -1,9 +1,7 @@
 TODO: 
 show all files
-add progress bar
 Add validation
-End time default? does it have to be an int? 
-Add input regex?  
+End time default? does it have to be an int?  
 Add help guide? 
 
 12/29:
