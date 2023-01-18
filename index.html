@@ -93,6 +93,13 @@
             const PATH_TO_PYODIDE_ROOT = PYODIDE_FOLDER + "/home/pyodide/";
             let pyodide = undefined;
             let triedToRun = false;
+            // ensure GEMF WASM is ready before running
+            let GEMFReady = false;
+            let runGEMFModule = undefined;
+            // output of GEMF
+            let output = undefined;
+            let allTransitions = undefined;
+            let transNetwork = undefined;
 
             const initializePyodide = async () => {
                 pyodide = await loadPyodide({
@@ -190,26 +197,19 @@
                     pyodide.runPython(await (await fetch(SITE_HOST + "GEMF_FAVITES_WEB.py")).text())
 
                     if (FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
-                        const allTransitions = new TextDecoder().decode(FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/all_state_transitions.txt'));
+                        allTransitions = new TextDecoder().decode(FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/all_state_transitions.txt'));
                         const allTransitionsArea = document.getElementById("allTransitions");
                         allTransitionsArea.value = allTransitions;
-                        console.log(allTransitions);
                     }
 
-                    const transNetwork = new TextDecoder().decode(FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
+                    transNetwork = new TextDecoder().decode(FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
                     const transNetworkArea = document.getElementById("transNetwork");
                     transNetworkArea.value = transNetwork;
-                    console.log(transNetwork);
                 } catch (e) {
                     console.log(e);
                 }
 
             }
-
-            // ensure GEMF WASM is ready before running
-            let GEMFReady = false;
-            // output of GEMF
-            let output = undefined;
 
             // global module object from GEMF.js
             Module = {
@@ -223,6 +223,7 @@
                         const outputArea = document.getElementById("output");
                         outputArea.value = output;
                         FS.writeFile(PATH_TO_PYODIDE_ROOT + "/output/output.txt", output);
+                        triedToRun = false;
                     }
                 },
                 // when something is printed to GEMF's stderr
@@ -232,6 +233,7 @@
                 },
                 onRuntimeInitialized: () => {
                     GEMFReady = true;
+                    runGEMFModule = Module.cwrap('run_gemf', 'number', ['number', 'string']);
                 }
             }
 
@@ -249,7 +251,7 @@
                         FS.symlink(PATH_TO_PYODIDE_ROOT + "output/network.txt", "network.txt");
                         FS.symlink(PATH_TO_PYODIDE_ROOT + "output/status.txt", "status.txt");
 
-                        Module.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
+                        runGEMFModule(0, "");
                     } catch (err) {
                         console.log(err);
                     }
@@ -275,7 +277,6 @@
 
                 const validNumber = (id, required = true) => {
                     const element = document.getElementById(id);
-                    console.log(element.value)
                     if ((element.value === "" && !required) || (element.value !== "" && parseInt(element.value) >= 0)) {
                         element.classList.remove("border");
                         element.classList.remove("border-danger");
@@ -311,6 +312,10 @@
             const downloadResults = () => {
                 if (output !== undefined) {
                     download(output, "output.txt");
+                    download(transNetwork, "transmission_network.txt");
+                    if (allTransitions) {
+                        download(allTransitions, "all_state_transitions.txt");
+                    }
                 } else {
                     alert("GEMF has not been run yet. No output results.");
                 }
