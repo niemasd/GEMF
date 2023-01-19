@@ -1,4 +1,5 @@
 import React, { Component } from 'react'
+
 import FileInput from './components/FileInput'
 import NumberInput from './components/NumberInput'
 import CheckboxInput from './components/CheckboxInput'
@@ -13,10 +14,23 @@ export class App extends Component {
 		super(props)
 
 		this.state = {
+			pyodide: undefined,
 		}
 	}
 
-	componentDidMount() {
+	async componentDidMount() {
+		this.setState({pyodide: await window.loadPyodide({
+			indexURL : "https://cdn.jsdelivr.net/pyodide/v0.22.0/full/",
+			stdout: (text) => {
+				const consoleTxt = document.getElementById("console");
+				consoleTxt.value += "stdout: \t" + text + "\n";
+				console.log(text)
+			},
+			stderr: (text) => {
+				const consoleTxt = document.getElementById("console");
+				consoleTxt.value += "stderr: \t" + text + "\n";
+			}
+		})});
 	}
 
 	runGEMFFavites = () => {
