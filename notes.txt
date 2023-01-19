@@ -1,3 +1,7 @@
+React TODO:
+- no more mounting pyodide onto GEMF
+- read inputs / set up state
+
 TODO: 
 show all files
 Add validation
