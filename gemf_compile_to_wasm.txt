@@ -1,6 +1,4 @@
-temporary file to record commands to compile GEMF.wasm file 
-
 emcc -c common.c
 emcc -c nrm.c
 emcc -c para.c
-emcc gemfc_nrm.c -o GEMF.js nrm.o para.o common.o -lm -lproxyfs.js -O3 -sEXPORTED_FUNCTIONS=_run_gemf -sEXPORTED_RUNTIME_METHODS=ccall,cwrap -DGEMFWASM
+emcc gemfc_nrm.c -o gemf-react/src/wasm/GEMF.js nrm.o para.o common.o -lm -lproxyfs.js -O3 -sENVIRONMENT=web -sEXPORTED_FUNCTIONS=_run_gemf -sEXPORTED_RUNTIME_METHODS=ccall,cwrap -sMODULARIZE -s 'EXPORT_NAME="createModule"' -DGEMFWASM

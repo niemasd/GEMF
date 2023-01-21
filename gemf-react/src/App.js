@@ -1,11 +1,12 @@
 import React, { Component } from 'react'
 
+import { SITE_HOST, FILE_INPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS } from './Constants'
+import createModule from './wasm/GEMF.js'
+
 import FileInput from './components/FileInput'
 import NumberInput from './components/NumberInput'
 import CheckboxInput from './components/CheckboxInput'
 import TextOutput from './components/TextOutput'
-
-import { SITE_HOST, FILE_INPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS } from './Constants'
 
 import './App.scss';
 
@@ -15,10 +16,30 @@ export class App extends Component {
 
 		this.state = {
 			pyodide: undefined,
+			gemfModule: undefined,
 		}
 	}
 
 	async componentDidMount() {
+		createModule().then(module => {
+			module.print = (text) => {
+				const consoleTxt = document.getElementById("console");
+				consoleTxt.value += "stdout: \t" + text + "\n";
+				// on GEMF finish
+				if (text.includes("simulation success!")) {
+				}
+			};
+			// when something is printed to GEMF's stderr
+			module.printErr = (text) => {
+				const consoleTxt = document.getElementById("console");
+				consoleTxt.value += "stderr: \t" + text + "\n";
+			}
+			this.setState({gemfModule: module}, () => {
+				console.log(module);
+				const runGEMFModule = module._run_gemf(0, "");
+			})
+		})
+
 		this.setState({pyodide: await window.loadPyodide({
 			indexURL : "https://cdn.jsdelivr.net/pyodide/v0.22.0/full/",
 			stdout: (text) => {
