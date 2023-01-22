@@ -1,6 +1,5 @@
 React TODO:
-- no more mounting pyodide onto GEMF
-- read inputs / set up state
+- fix the memory out of bounds issue
 
 TODO: 
 show all files
