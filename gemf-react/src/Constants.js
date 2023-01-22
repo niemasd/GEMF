@@ -1,5 +1,8 @@
 // site to fetch files from
-export const SITE_HOST = window.location.href.includes("https") ? "https://daniel-ji.github.io/GEMF/" : "http://localhost:8000/";
+export const SITE_HOST = window.location.href.includes("https") ? "https://daniel-ji.github.io/GEMF/" : "http://localhost:3000/";
+export const PYODIDE_FOLDER = "pyodide";
+// directory for where pyodide writes files 
+export const PATH_TO_PYODIDE_ROOT = PYODIDE_FOLDER + "/home/pyodide/";
 export const FILE_INPUTS = [
     {
         id: "contactNetwork",
