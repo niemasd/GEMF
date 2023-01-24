@@ -5,7 +5,7 @@ import NumberInput from './components/NumberInput'
 import CheckboxInput from './components/CheckboxInput'
 import TextOutput from './components/TextOutput'
 
-import { SITE_HOST, FILE_INPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS, PATH_TO_PYODIDE_ROOT, PYODIDE_FOLDER } from './Constants'
+import { SITE_HOST, FILE_INPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS, PATH_TO_PYODIDE_ROOT } from './Constants'
 import './App.scss';
 
 export class App extends Component {
@@ -24,54 +24,47 @@ export class App extends Component {
 		this.runGEMFFavites = this.runGEMFFavites.bind(this);
 		this.initializePyodide = this.initializePyodide.bind(this);
 	}
-
-	componentDidMount() {
-
-		window.createModule({
-			print: (text) => {
-				this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF stdout: \t" + text + "\n"}))
-				// on GEMF finish
-				if (text.includes("simulation success!")) {
-					const FS = this.state.gemfModule.FS;
-					const finalResults = new TextDecoder().decode(FS.readFile('output.txt'));
-					this.setState({finalResultsText: finalResults})
-					FS.writeFile(PATH_TO_PYODIDE_ROOT + "/output/output.txt", finalResults);
+	
+	initializeGEMF = () => {
+		return new Promise((resolve, reject) => {
+			this.setState(prevState => ({consoleText: prevState.consoleText += "Initializing GEMF...\n"}))
+			window.createModule({
+				print: (text) => {
+					this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF stdout: \t" + text + "\n"}))
+					// on GEMF finish
+					if (text.includes("simulation success!")) {
+						const FS = this.state.gemfModule.FS;
+						const pyodide = this.state.pyodide;
+						const finalResults = new TextDecoder().decode(FS.readFile('output.txt'));
+						this.setState({finalResultsText: finalResults})
+						pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + "/output/output.txt", finalResults);
+					}
+				},
+				printErr: (text) => {
+					this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF stderr: \t" + text + "\n"}))
 				}
-			},
-			printErr: (text) => {
-				this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF stderr: \t" + text + "\n"}))
-			}
-		}).then((Module) => {
-			this.setState({gemfModule: Module})
+			}).then((Module) => {
+				this.setState({gemfModule: Module}, resolve)
+			})
 		})
 	}
 
-	async initializePyodide(callback = () => {}) {
-		const FS = this.state.gemfModule.FS;
-		
-		this.setState(prevState => ({consoleText: prevState.consoleText += "Initializing Pyodide...\n"}))
-		this.setState({pyodide: await window.loadPyodide({
-			indexURL : "https://cdn.jsdelivr.net/pyodide/v0.22.0/full/",
-			stdout: (text) => {
-				this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF_FAVITES stdout: \t" + text + "\n"}))
-			},
-			stderr: (text) => {
-				this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF_FAVITES stderr: \t" + text + "\n"}))
-			}
-		})}, () => {
-			// create the folder to mount pyodide to
-			FS.mkdir(PYODIDE_FOLDER);
-			// mount pyodide
-			FS.mount(FS.filesystems.PROXYFS, {
-					root: "/",
-					fs: this.state.pyodide.FS
-			}, PYODIDE_FOLDER)
-			callback();
-		});
+	initializePyodide = () => {
+		return new Promise(async (resolve, reject) => {
+			this.setState(prevState => ({consoleText: prevState.consoleText += "Initializing Pyodide...\n"}))
+			this.setState({pyodide: await window.loadPyodide({
+				indexURL : "https://cdn.jsdelivr.net/pyodide/v0.22.0/full/",
+				stdout: (text) => {
+					this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF_FAVITES stdout: \t" + text + "\n"}))
+				},
+				stderr: (text) => {
+					this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF_FAVITES stderr: \t" + text + "\n"}))
+				}
+			})}, resolve);
+		})
 	}
 
 	async runGEMFFavites() {
-		const FS = this.state.gemfModule.FS;
 		const writeFile = this.writeFile;
 
 		if (!this.allInputsValid()) {
@@ -86,17 +79,20 @@ export class App extends Component {
 			allTransText: ''
 		})
 
-		await this.initializePyodide(async () => {
+		this.initializeGEMF()
+		.then(await this.initializePyodide())
+		.then(async () => {
+			const FS = this.state.gemfModule.FS;
 			const pyodide = this.state.pyodide;
 
-			if (FS.readdir(PATH_TO_PYODIDE_ROOT).includes("output")) {
-				for (const file of FS.readdir(PATH_TO_PYODIDE_ROOT + "output")) {
+			if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes("output")) {
+				for (const file of pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + "output")) {
 					if (file === "." || file === "..") {
 						continue; 
 					}
-					FS.unlink(PATH_TO_PYODIDE_ROOT + "output/" + file);
+					pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + "output/" + file);
 				}
-				FS.rmdir(PATH_TO_PYODIDE_ROOT + "output")
+				pyodide.FS.rmdir(PATH_TO_PYODIDE_ROOT + "output")
 				FS.unlink("para.txt")
 				FS.unlink("status.txt")
 				FS.unlink("network.txt")
@@ -133,33 +129,35 @@ export class App extends Component {
 			writeFile("infectedStates", "infected_states.txt", true)();
 			writeFile("rates", "rates.tsv", true)();
 			FS.writeFile('output.txt', '');
-			FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch(SITE_HOST + 'GEMF_FAVITES.py')).text(), {encoding: "utf8"});
+			pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch(SITE_HOST + 'GEMF_FAVITES.py')).text(), {encoding: "utf8"});
 	
 			// run GEMF_FAVITES 
 			try {
 				pyodide.runPython(await (await fetch(SITE_HOST + "GEMF_FAVITES_WEB.py")).text())
 	
-				if (FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
-					const allTransitions = new TextDecoder().decode(FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/all_state_transitions.txt'));
+				if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
+					const allTransitions = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/all_state_transitions.txt'));
 					this.setState({allTransText: allTransitions})
 				}
 	
-				const transNetwork = new TextDecoder().decode(FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
+				const transNetwork = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
 				this.setState({transNetworkText: transNetwork})
 			} catch (e) {
 				console.log(e);
 			}
-		});
+		})
 
 	}
 
 	runGEMF = () => {
 		const FS = this.state.gemfModule.FS;
+		const pyodide = this.state.pyodide;
 
 		try {
-			FS.symlink(PATH_TO_PYODIDE_ROOT + "output/para.txt", "para.txt");
-			FS.symlink(PATH_TO_PYODIDE_ROOT + "output/network.txt", "network.txt");
-			FS.symlink(PATH_TO_PYODIDE_ROOT + "output/status.txt", "status.txt");
+			// TODO: copy files
+			FS.writeFile("para.txt", pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/para.txt"));
+			FS.writeFile("network.txt", pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/network.txt"));
+			FS.writeFile("status.txt", pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/status.txt"));
 
 			this.state.gemfModule.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
 		} catch (err) {
@@ -168,16 +166,17 @@ export class App extends Component {
 	}
 
 	// closure function for writing text to files
-	writeFile = (id, fileName, pyodide = false) => {
+	writeFile = (id, fileName, toPyodide = false) => {
 		const FS = this.state.gemfModule.FS;
+		const pyodide = this.state.pyodide;
 
 		return () => {
 			const input = document.getElementById(id).files[0];
 			const reader = new FileReader();
 			reader.onload = function() {
-				FS.writeFile((pyodide ? PATH_TO_PYODIDE_ROOT : '') + fileName, reader.result);
-				// clear so that the reader will run again for new files, even if same name
-				document.getElementById(id).value = "";
+				toPyodide ? 
+				pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileName, reader.result) :
+				FS.writeFile(fileName, reader.result)
 			}
 			reader.readAsText(input);
 		}
