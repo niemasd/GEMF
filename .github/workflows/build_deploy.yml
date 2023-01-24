@@ -19,7 +19,6 @@ jobs:
 
     - name: Change directory
       working-directory: ./website
-      run: cp .env.dev .env
     
     - name: Install Node.js
       uses: actions/setup-node@v1
