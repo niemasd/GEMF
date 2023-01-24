@@ -269,6 +269,7 @@ export class App extends Component {
 				<TextOutput id="transNetwork" label="Transmission Network Results" text={this.state.transNetworkText}/>
 				<TextOutput id="allTransitions" label="All State Transitions Results" text={this.state.allTransText}/>
 			</div>
+			<p className="w-100 text-center mb-5">Created by Daniel Ji and Helena Hundhausen under Professor <a href="https://www.niema.net" target="_blank" rel="noreferrer">Niema Moshiri</a></p>
 		</div>
 		)
   	}
