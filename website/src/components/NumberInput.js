@@ -10,7 +10,7 @@ export class NumberInput extends Component {
 
     render() {
         return (
-            <div className="mb-3 mx-3" style={{width: "50%"}}>
+            <div className="mb-3 mx-3" style={{width: "25%"}}>
                 <label className="form-label" htmlFor={this.props.id}>{this.props.label} {this.props.required ? '*' : ''}</label>
                 <div className="input-group number-input">
                     <input onChange={() => this.props.validInput(this.props.id)} id={this.props.id} type="number" className="form-control" placeholder={this.props.placeholder ?? this.props.label} aria-label={this.props.label} />

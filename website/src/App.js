@@ -5,7 +5,7 @@ import NumberInput from './components/NumberInput'
 import CheckboxInput from './components/CheckboxInput'
 import TextOutput from './components/TextOutput'
 
-import { SITE_HOST, FILE_INPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS, PATH_TO_PYODIDE_ROOT } from './Constants'
+import { SITE_HOST, FILE_INPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS, PATH_TO_PYODIDE_ROOT, FILE_INPUTS_SUFFIX } from './Constants'
 import './App.scss';
 
 export class App extends Component {
@@ -19,6 +19,10 @@ export class App extends Component {
 			finalResultsText: '',
 			transNetworkText: '',
 			allTransText: '',
+		}
+
+		for (const fileInput of FILE_INPUTS) {
+			this.state[fileInput.id + FILE_INPUTS_SUFFIX] = undefined;
 		}
 
 		this.runGEMFFavites = this.runGEMFFavites.bind(this);
@@ -65,8 +69,6 @@ export class App extends Component {
 	}
 
 	async runGEMFFavites() {
-		const writeFile = this.writeFile;
-
 		if (!this.allInputsValid()) {
 			return;
 		}
@@ -124,10 +126,9 @@ export class App extends Component {
 			pyodide.globals.set("runGEMF", this.runGEMF);
 	
 			// creating appropriate files to run GEMF_FAVITES
-			writeFile("contactNetwork", "contact_network.tsv", true)();
-			writeFile("initialStates", "initial_states.tsv", true)();
-			writeFile("infectedStates", "infected_states.txt", true)();
-			writeFile("rates", "rates.tsv", true)();
+			for (const fileInput of FILE_INPUTS) {
+				pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileInput.pyodideFileName, this.state[fileInput.id + FILE_INPUTS_SUFFIX]);
+			}
 			FS.writeFile('output.txt', '');
 			pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch(SITE_HOST + 'GEMF_FAVITES.py')).text(), {encoding: "utf8"});
 	
@@ -143,7 +144,7 @@ export class App extends Component {
 				const transNetwork = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
 				this.setState({transNetworkText: transNetwork})
 			} catch (e) {
-				console.log(e);
+				this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF_FAVITES stderr: \t" + e + "\n"}))
 			}
 		})
 
@@ -165,23 +166,6 @@ export class App extends Component {
 		}
 	}
 
-	// closure function for writing text to files
-	writeFile = (id, fileName, toPyodide = false) => {
-		const FS = this.state.gemfModule.FS;
-		const pyodide = this.state.pyodide;
-
-		return () => {
-			const input = document.getElementById(id).files[0];
-			const reader = new FileReader();
-			reader.onload = function() {
-				toPyodide ? 
-				pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileName, reader.result) :
-				FS.writeFile(fileName, reader.result)
-			}
-			reader.readAsText(input);
-		}
-	}
-
 	allInputsValid = () => {
 		let valid = true;
 
@@ -198,7 +182,7 @@ export class App extends Component {
 		// checking if file is valid
 		if (FILE_INPUTS.map(input => input.id).includes(id)) {
 			const input = document.getElementById(id);
-			if (input.value !== "") {
+			if (input !== "" || this.state[id + FILE_INPUTS_SUFFIX]) {
 				input.classList.remove("border");
 				input.classList.remove("border-danger");
 				return true;
@@ -224,21 +208,42 @@ export class App extends Component {
 		}
 	}
 
+	loadExample = () => {
+		for (const fileInput of FILE_INPUTS) {
+			fetch(fileInput.exampleFile)
+			.then(response => response.text())
+			.then((text) => {
+				for (const fileInput of FILE_INPUTS) {
+					document.getElementById(fileInput.id).value = null;
+				}
+				this.setState({[fileInput.id + FILE_INPUTS_SUFFIX]: text})
+			})
+		}
+	}
+
+	setFileText = (id, text) => {
+		this.setState({[id + FILE_INPUTS_SUFFIX]: text});
+	}
+
   	render() {
 		return (
-		<div className="App">
+		<div className="App d-flex flex-column align-items-center">
 			<h1 className="my-5 text-center">GEMF FAVITES Online Tool</h1>
-			<div id="input-container" className="mb-5 d-flex flex-column align-items-center">
-				<div className="d-flex flex-wrap justify-content-center">
+			<h2>About The Tool</h2>
+			
+			<div id="input-container" className="d-flex flex-column align-items-center">
+				<div className="d-flex flex-wrap justify-content-center w-100">
 					{FILE_INPUTS.map(input => 
 					<FileInput
 					key={input.id}
 					id={input.id}
 					label={input.label}
 					validInput={this.validInput}
+					fileText={this.state[input.id + FILE_INPUTS_SUFFIX]}
+					setFileText={this.setFileText}
 					/>)}
 				</div>
-				<div className="d-flex flex-wrap justify-content-center">
+				<div className="d-flex flex-wrap justify-content-center w-100">
 					{NUMBER_INPUTS.map(input => 
 					<NumberInput
 					key={input.id}
@@ -249,7 +254,7 @@ export class App extends Component {
 					validInput={this.validInput}
 					/>)}
 				</div>
-				<div className="d-flex flex-column align-items-center mt-4">
+				<div className="d-flex justify-content-center mt-4 w-100">
 					{CHECKBOX_INPUTS.map(input => 
 					<CheckboxInput
 					key={input.id}
@@ -260,6 +265,7 @@ export class App extends Component {
 				<p>* Required</p>
 			</div>
 			<div id="action-container" className="d-flex flex-column align-items-center">
+				<button className="my-4 btn btn-warning" onClick={this.loadExample}>Load Example Dataset</button>
 				<button type="button" className="btn btn-primary mb-4" onClick={this.runGEMFFavites}>RUN GEMF_FAVITES</button>
 				<button type="button" className="btn btn-success" onClick={this.downloadResults}>Download Results</button>
 			</div>
@@ -269,7 +275,7 @@ export class App extends Component {
 				<TextOutput id="transNetwork" label="Transmission Network Results" text={this.state.transNetworkText}/>
 				<TextOutput id="allTransitions" label="All State Transitions Results" text={this.state.allTransText}/>
 			</div>
-			<p className="w-100 text-center mb-5">Created by Daniel Ji and Helena Hundhausen under Professor <a href="https://www.niema.net" target="_blank" rel="noreferrer">Niema Moshiri</a></p>
+			<p className="w-100 text-center mb-5">Created by Daniel Ji and Helena Hundhausen under Professor <a href="https://www.niema.net" target="_blank" rel="noreferrer">Niema Moshiri</a>.</p>
 		</div>
 		)
   	}
