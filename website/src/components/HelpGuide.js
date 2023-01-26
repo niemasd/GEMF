@@ -21,7 +21,6 @@ export class HelpGuide extends Component {
             helpGuide = DOMPurify.sanitize(marked.parse(helpGuide.join("")))
             helpGuide = helpGuide.replace(/<a href="((?!https).[^>]{0,})">/, '<a href="https://github.com/niemasd/GEMF/blob/master/$1">');
             helpGuide = helpGuide.replace(/<a (href=".[^>]{0,}")>/, '<a target="_blank" $1>')
-            console.log(helpGuide)
             this.setState({helpGuide})
         }) 
     }

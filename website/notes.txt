@@ -1,8 +1,7 @@
 TODO:
 Summarizing input files (and output files)
-Handling large file uploads  
-Add help guide? Markdown to HTML, create a special div for this help guide that sizes down everything, also makes links works as well
-    using a tool maybe something like this https://showdownjs.com/
+Handling large file uploads
+    - add summaries
 
 12/29:
 - Add comments / refactored 

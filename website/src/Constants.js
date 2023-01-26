@@ -56,3 +56,25 @@ export const CHECKBOX_INPUTS = [
         label: "Suppress Log Messages?" 
     }
 ]
+export const FILE_OUTPUTS = [
+    {
+        id: 'console',
+        label: 'Console',
+        download: false,
+    },
+    {
+        id: 'finalResults',
+        label: 'Final Results (Output.txt)',
+        download: true,
+    },
+    {
+        id: 'transmissionNetwork',
+        label: 'Transmission Network Results',
+        download: true,
+    },
+    {
+        id: 'allTransitions',
+        label: 'All State Transitions Results',
+        download: true
+    }
+]
