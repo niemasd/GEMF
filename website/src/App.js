@@ -4,9 +4,11 @@ import FileInput from './components/FileInput'
 import NumberInput from './components/NumberInput'
 import CheckboxInput from './components/CheckboxInput'
 import TextOutput from './components/TextOutput'
+import HelpGuide from './components/HelpGuide'
 
 import { SITE_HOST, FILE_INPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS, PATH_TO_PYODIDE_ROOT, FILE_INPUTS_SUFFIX } from './Constants'
 import './App.scss';
+import 'github-markdown-css/github-markdown-light.css'
 
 export class App extends Component {
 	constructor(props) {
@@ -75,7 +77,7 @@ export class App extends Component {
 
 		// reset text / output
 		this.setState({
-			consoleText: "Running GEMF_FAVITES...\n",
+			consoleText: '',
 			finalResultsText: '',
 			transNetworkText: '',
 			allTransText: ''
@@ -124,28 +126,49 @@ export class App extends Component {
 			}
 			pyodide.globals.set("arguments", args);
 			pyodide.globals.set("runGEMF", this.runGEMF);
+
+			// keeps track of the number of files that were uploaded
+			let fileCounter = 0;
 	
 			// creating appropriate files to run GEMF_FAVITES
 			for (const fileInput of FILE_INPUTS) {
-				pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileInput.pyodideFileName, this.state[fileInput.id + FILE_INPUTS_SUFFIX]);
+				console.log('hit')
+				if (this.state[fileInput.id + FILE_INPUTS_SUFFIX]) {
+					pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileInput.pyodideFileName, this.state[fileInput.id + FILE_INPUTS_SUFFIX]);
+					fileCounter++;
+				} else {
+					const fileReader = new FileReader();
+					fileReader.onload = (e) => {
+						pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileInput.pyodideFileName, e.target.result);
+						fileCounter++;
+					}
+					fileReader.readAsText(document.getElementById(fileInput.id).files[0])
+				}
 			}
 			FS.writeFile('output.txt', '');
 			pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch(SITE_HOST + 'GEMF_FAVITES.py')).text(), {encoding: "utf8"});
 	
 			// run GEMF_FAVITES 
-			try {
-				pyodide.runPython(await (await fetch(SITE_HOST + "GEMF_FAVITES_WEB.py")).text())
-	
-				if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
-					const allTransitions = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/all_state_transitions.txt'));
-					this.setState({allTransText: allTransitions})
+			const runPython = setInterval(async () => {
+				if (fileCounter === 4) {
+					clearInterval(runPython);
+					this.setState(prevState => ({consoleText: prevState.consoleText += "Running GEMF_FAVITES...\n"}))
+
+					try {
+						pyodide.runPython(await (await fetch(SITE_HOST + "GEMF_FAVITES_WEB.py")).text())
+					}  catch (e) {
+						this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF_FAVITES stderr: \t" + e + "\n"}))
+					}
+
+					if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
+						const allTransitions = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/all_state_transitions.txt'));
+						this.setState({allTransText: allTransitions})
+					}
+		
+					const transNetwork = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
+					this.setState({transNetworkText: transNetwork})
 				}
-	
-				const transNetwork = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
-				this.setState({transNetworkText: transNetwork})
-			} catch (e) {
-				this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF_FAVITES stderr: \t" + e + "\n"}))
-			}
+			}, 500)
 		})
 
 	}
@@ -225,11 +248,14 @@ export class App extends Component {
 		this.setState({[id + FILE_INPUTS_SUFFIX]: text});
 	}
 
+	goToAbout = () => {
+		document.getElementById("help-guide").scrollIntoView({behavior: 'smooth'});
+	}
+
   	render() {
 		return (
 		<div className="App d-flex flex-column align-items-center">
 			<h1 className="my-5 text-center">GEMF FAVITES Online Tool</h1>
-			<h2>About The Tool</h2>
 			
 			<div id="input-container" className="d-flex flex-column align-items-center">
 				<div className="d-flex flex-wrap justify-content-center w-100">
@@ -264,10 +290,11 @@ export class App extends Component {
 				</div>
 				<p>* Required</p>
 			</div>
-			<div id="action-container" className="d-flex flex-column align-items-center">
-				<button className="my-4 btn btn-warning" onClick={this.loadExample}>Load Example Dataset</button>
-				<button type="button" className="btn btn-primary mb-4" onClick={this.runGEMFFavites}>RUN GEMF_FAVITES</button>
-				<button type="button" className="btn btn-success" onClick={this.downloadResults}>Download Results</button>
+			<div id="action-container" className="d-flex justify-content-center my-4">
+				<button className="mx-3 btn btn-warning" onClick={this.loadExample}>Load Example Dataset</button>
+				<button type="button" className="btn btn-primary mx-3" onClick={this.runGEMFFavites}>RUN GEMF_FAVITES</button>
+				<button type="button" className="btn btn-success mx-3" onClick={this.downloadResults}>Download Results</button>
+				<button type="button" className="btn btn-secondary mx-3" onClick={this.goToAbout}>About This Tool</button>
 			</div>
 			<div id="output-container" className="d-flex flex-wrap justify-content-around mt-5 mb-5 w-100">
 				<TextOutput id="console" label="Console" text={this.state.consoleText}/>
@@ -275,7 +302,8 @@ export class App extends Component {
 				<TextOutput id="transNetwork" label="Transmission Network Results" text={this.state.transNetworkText}/>
 				<TextOutput id="allTransitions" label="All State Transitions Results" text={this.state.allTransText}/>
 			</div>
-			<p className="w-100 text-center mb-5">Created by Daniel Ji and Helena Hundhausen under Professor <a href="https://www.niema.net" target="_blank" rel="noreferrer">Niema Moshiri</a>.</p>
+			<HelpGuide />
+			<p className="w-100 text-center my-5">Created by Daniel Ji and Helena Hundhausen under Professor <a href="https://www.niema.net" target="_blank" rel="noreferrer">Niema Moshiri</a>.</p>
 		</div>
 		)
   	}
