@@ -1,0 +1,85 @@
+TODO:
+Summarizing input files (and output files)
+Handling large file uploads  
+Add help guide? Markdown to HTML, create a special div for this help guide that sizes down everything, also makes links works as well
+    using a tool maybe something like this https://showdownjs.com/
+
+12/29:
+- Add comments / refactored 
+- Question: Do we need to implement this in React?
+    - For now, will continue to work with HTML/JS
+- Add necessary inputs and made them adjust arguments
+    ui: 4 files, 5 variables
+        CONTACT_NETWORK file
+        INITIAL STATES file
+        INFECTED_STATES file
+        RATES file
+
+        END_TIME number input 
+        MAX_EVENTS number input
+        Output_all_transitions boolean input
+        Quiet boolean input
+        RNG_SEED number input
+- Made UI cleaner
+- Added a favicon LOL
+
+12/27 UPDATE:
+
+to fix:
+refactor code
+update Niema on GEMF sys import modification
+discuss how part of GEMF_FAVITES is no longer needed / new interaction
+actually create UI 
+get rid of example dir
+get rid of useless functions
+
+FROM PAST: 
+
+- convert to FAVITES
+    - can run python code in the browser, but can't pass in command line arguments
+        - make a package or something? 
+        - what we need to make it do: 
+
+problem: GET GEMF_FAVITES.py in the browser, reducing the amount we change the original GEMF_FAVITES.py file
+
+solution 1: brython, transcrypt
+problem 1-1: accessing the filesystem: not possible, cmd line arguments might not be managable, can't run GEMF either
+
+solution: re-write wrapper to not use the filesystem and instead interact with javascript (does not sound fun, should still look into it nevertheless)
+
+solution 2: run the python in the browser (using pyodide / pyscript)
+https://www.jhanley.com/blog/pyscript-files-and-file-systems-part-1/
+
+problem 2-1: can't pass in command line arguments
+
+solutions: 
+- make a package? (not sure where this leads)
+- modify GEMF_FAVITES itself, to not use command line arguments:
+
+	for the files, we fix the file location (since we're controlling the file system / writing to it anyways):
+		-c CONTACT_NETWORK
+		-s INITIAL_STATES
+		-i INFECTED_STATES
+		-r RATES
+		-o OUTPUT
+	setting variables and referencing these instead of cmd line arguments, FOR:
+		-h --help
+		-t END TIME
+		--max_events MAX_EVENTS
+		--output_all_transitions
+		--quiet
+		--rng_seed RNG_SEED
+		--gemf_path GEMF_PATH
+
+problem 2-2: can't run GEMF
+
+solution 2-2: modify python wrapper again, so that instead of calling GEMF, just writes files (hopefully to the same filesystem of GEMF WASM code), triggers a flag or something that is received by the JS, which then runs GEMF'
+
+note: tried to py -> cython -> c -> wasm -> js (in-browser-able) it, ran into a bunch of problems, more difficult than solutions listed above
+
+ultimate integration plan:
+implement infected states into GEMF-Designer
+load onto the GEMF tool, which prompts for a bunch of inputs to run
+GEMF-Designer is there to help with the creation of INFECTED_STATES and RATES
+After loading in all options, can hit "RUN"
+this all creates part of step 3, transmissions, for FAVITES
