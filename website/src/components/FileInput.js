@@ -32,7 +32,21 @@ export class FileInput extends Component {
         }
     }
 
+    getFileText = () => {
+        if (!this.props.fileText) {
+            return '';
+        }
+
+        if (this.props.fileText.length <= 10000) {
+            return this.props.fileText;
+        }
+
+        return `${this.props.fileText.substring(0, 10000)} ...\n10,000 characters displayed, ${this.props.fileText.length - 10000} characters more`;
+    }
+
     render() {
+        const fileText = this.getFileText();
+
         return (
         <div className="mb-3 mx-3 file-input" style={{minWidth: "60%"}}>
             <label htmlFor={this.props.id} className="form-label">{this.props.label} File *</label>
@@ -45,7 +59,7 @@ export class FileInput extends Component {
                     </button>
                 </div>
             </div>
-            {this.props.fileText && this.state.fileTextShown && <textarea id={this.props.id + "File"} className="form-control my-3 file-preview" readOnly value={this.props.fileText} />}
+            <textarea style={{display: this.props.fileText && this.state.fileTextShown ? 'block': 'none'}} id={this.props.id + "File"} className="form-control my-3 file-preview" readOnly value={fileText} />
         </div>
         )
     }

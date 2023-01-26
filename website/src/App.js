@@ -1,12 +1,14 @@
 import React, { Component } from 'react'
 
+import { saveAs } from 'file-saver';
+
 import FileInput from './components/FileInput'
 import NumberInput from './components/NumberInput'
 import CheckboxInput from './components/CheckboxInput'
 import TextOutput from './components/TextOutput'
 import HelpGuide from './components/HelpGuide'
 
-import { SITE_HOST, FILE_INPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS, PATH_TO_PYODIDE_ROOT, FILE_INPUTS_SUFFIX } from './Constants'
+import { SITE_HOST, FILE_INPUTS, FILE_OUTPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS, PATH_TO_PYODIDE_ROOT, FILE_INPUTS_SUFFIX } from './Constants'
 import './App.scss';
 import 'github-markdown-css/github-markdown-light.css'
 
@@ -17,14 +19,15 @@ export class App extends Component {
 		this.state = {
 			pyodide: undefined,
 			gemfModule: undefined,
-			consoleText: '',
-			finalResultsText: '',
-			transNetworkText: '',
-			allTransText: '',
 		}
 
 		for (const fileInput of FILE_INPUTS) {
 			this.state[fileInput.id + FILE_INPUTS_SUFFIX] = undefined;
+		}
+
+		for (const fileOutput of FILE_OUTPUTS) {
+			this.state[fileOutput.id + 'Text'] = undefined;
+			this.state[fileOutput.id + 'Download'] = fileOutput.download;
 		}
 
 		this.runGEMFFavites = this.runGEMFFavites.bind(this);
@@ -76,12 +79,11 @@ export class App extends Component {
 		}
 
 		// reset text / output
-		this.setState({
-			consoleText: '',
-			finalResultsText: '',
-			transNetworkText: '',
-			allTransText: ''
-		})
+		const newState = {};
+		for (const fileOutput of FILE_OUTPUTS) {
+			newState[fileOutput.id + "Text"] = '';
+		}
+		this.setState(newState)
 
 		this.initializeGEMF()
 		.then(await this.initializePyodide())
@@ -132,7 +134,6 @@ export class App extends Component {
 	
 			// creating appropriate files to run GEMF_FAVITES
 			for (const fileInput of FILE_INPUTS) {
-				console.log('hit')
 				if (this.state[fileInput.id + FILE_INPUTS_SUFFIX]) {
 					pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileInput.pyodideFileName, this.state[fileInput.id + FILE_INPUTS_SUFFIX]);
 					fileCounter++;
@@ -162,11 +163,11 @@ export class App extends Component {
 
 					if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
 						const allTransitions = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/all_state_transitions.txt'));
-						this.setState({allTransText: allTransitions})
+						this.setState({allTransitionsText: allTransitions})
 					}
 		
-					const transNetwork = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
-					this.setState({transNetworkText: transNetwork})
+					const transmissionNetwork = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
+					this.setState({transmissionNetworkText: transmissionNetwork})
 				}
 			}, 500)
 		})
@@ -231,6 +232,14 @@ export class App extends Component {
 		}
 	}
 
+	downloadResults = () => {
+		for (const fileOutput of FILE_OUTPUTS) {
+			if (this.state[fileOutput.id + "Text"] && this.state[fileOutput.id + "Text"] !== "" && this.state[fileOutput.id + "Download"]) {
+				saveAs(new Blob([this.state[fileOutput.id + "Text"]]), fileOutput.id + ".txt");
+			}
+		}
+	}
+
 	loadExample = () => {
 		for (const fileInput of FILE_INPUTS) {
 			fetch(fileInput.exampleFile)
@@ -246,6 +255,10 @@ export class App extends Component {
 
 	setFileText = (id, text) => {
 		this.setState({[id + FILE_INPUTS_SUFFIX]: text});
+	}
+
+	toggleDownloadFile = (id) => {
+		this.setState(prevState => {return {[id + "Download"]: !prevState[id + "Download"]}})
 	}
 
 	goToAbout = () => {
@@ -297,10 +310,15 @@ export class App extends Component {
 				<button type="button" className="btn btn-secondary mx-3" onClick={this.goToAbout}>About This Tool</button>
 			</div>
 			<div id="output-container" className="d-flex flex-wrap justify-content-around mt-5 mb-5 w-100">
-				<TextOutput id="console" label="Console" text={this.state.consoleText}/>
-				<TextOutput id="finalResults" label="Final Results (Output.txt)" text={this.state.finalResultsText}/>
-				<TextOutput id="transNetwork" label="Transmission Network Results" text={this.state.transNetworkText}/>
-				<TextOutput id="allTransitions" label="All State Transitions Results" text={this.state.allTransText}/>
+				{FILE_OUTPUTS.map(fileOutput => 
+				<TextOutput 
+				key={fileOutput.id}
+				id={fileOutput.id}
+				label={fileOutput.label}
+				text={this.state[fileOutput.id + "Text"]}
+				downloadFile={this.state[fileOutput.id + "Download"]}
+				toggleDownloadFile={() => this.toggleDownloadFile(fileOutput.id)}
+				/>)}
 			</div>
 			<HelpGuide />
 			<p className="w-100 text-center my-5">Created by Daniel Ji and Helena Hundhausen under Professor <a href="https://www.niema.net" target="_blank" rel="noreferrer">Niema Moshiri</a>.</p>
