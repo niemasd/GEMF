@@ -36,21 +36,22 @@ export class App extends Component {
 	
 	initializeGEMF = () => {
 		return new Promise((resolve, reject) => {
-			this.setState(prevState => ({consoleText: prevState.consoleText += "Initializing GEMF...\n"}))
+			this.logMessage("Initializing GEMF...")
 			window.createModule({
 				print: (text) => {
-					this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF stdout: \t" + text + "\n"}))
+					this.logMessage("GEMF stdout: \t" + text)
 					// on GEMF finish
 					if (text.includes("simulation success!")) {
 						const FS = this.state.gemfModule.FS;
 						const pyodide = this.state.pyodide;
 						const finalResults = new TextDecoder().decode(FS.readFile('output.txt'));
 						this.setState({finalResultsText: finalResults})
+						this.logMessage("Writing output from GEMF WASM to Pyodide..." )
 						pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + "/output/output.txt", finalResults);
 					}
 				},
 				printErr: (text) => {
-					this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF stderr: \t" + text + "\n"}))
+					this.logMessage("GEMF stderr: \t" + text)
 				}
 			}).then((Module) => {
 				this.setState({gemfModule: Module}, resolve)
@@ -60,14 +61,14 @@ export class App extends Component {
 
 	initializePyodide = () => {
 		return new Promise(async (resolve, reject) => {
-			this.setState(prevState => ({consoleText: prevState.consoleText += "Initializing Pyodide...\n"}))
+			this.logMessage("Initializing Pyodide...")
 			this.setState({pyodide: await window.loadPyodide({
 				indexURL : "https://cdn.jsdelivr.net/pyodide/v0.22.0/full/",
 				stdout: (text) => {
-					this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF_FAVITES stdout: \t" + text + "\n"}))
+					this.logMessage("GEMF_FAVITES stdout: " + text)
 				},
 				stderr: (text) => {
-					this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF_FAVITES stderr: \t" + text + "\n"}))
+					this.logMessage("GEMF_FAVITES stderr: " + text)
 				}
 			})}, resolve);
 		})
@@ -136,11 +137,13 @@ export class App extends Component {
 			for (const fileInput of FILE_INPUTS) {
 				if (this.state[fileInput.id + FILE_INPUTS_SUFFIX]) {
 					pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileInput.pyodideFileName, this.state[fileInput.id + FILE_INPUTS_SUFFIX]);
+					this.logMessage("Writing " + fileInput.label + " to Pyodide...");
 					fileCounter++;
 				} else {
 					const fileReader = new FileReader();
 					fileReader.onload = (e) => {
 						pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileInput.pyodideFileName, e.target.result);
+						this.logMessage("Writing " + fileInput.label + " to Pyodide...")
 						fileCounter++;
 					}
 					fileReader.readAsText(document.getElementById(fileInput.id).files[0])
@@ -153,12 +156,12 @@ export class App extends Component {
 			const runPython = setInterval(async () => {
 				if (fileCounter === 4) {
 					clearInterval(runPython);
-					this.setState(prevState => ({consoleText: prevState.consoleText += "Running GEMF_FAVITES...\n"}))
+					this.logMessage("Running GEMF_FAVITES...")
 
 					try {
 						pyodide.runPython(await (await fetch(SITE_HOST + "GEMF_FAVITES_WEB.py")).text())
 					}  catch (e) {
-						this.setState(prevState => ({consoleText: prevState.consoleText += "GEMF_FAVITES stderr: \t" + e + "\n"}))
+						this.logMessage("GEMF_FAVITES stderr: \t" + e)
 					}
 
 					if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
@@ -183,6 +186,7 @@ export class App extends Component {
 			FS.writeFile("para.txt", pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/para.txt"));
 			FS.writeFile("network.txt", pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/network.txt"));
 			FS.writeFile("status.txt", pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/status.txt"));
+			this.logMessage("Copying GEMF WASM files to Pyodide...")
 
 			this.state.gemfModule.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
 		} catch (err) {
@@ -230,6 +234,10 @@ export class App extends Component {
 				return false;
 			}
 		}
+	}
+
+	logMessage = (message) => {
+		this.setState(prevState => ({consoleText: prevState.consoleText += message + "\n"}))
 	}
 
 	downloadResults = () => {

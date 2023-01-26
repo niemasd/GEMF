@@ -2,6 +2,8 @@ TODO:
 Summarizing input files (and output files)
 Handling large file uploads
     - add summaries
+    - clean up console (add times, format better)
+    - figure out bottleneck in running GEMF_FAVITES (is delayed after running GEMF_FAVITES and before anything else)
 
 12/29:
 - Add comments / refactored 
