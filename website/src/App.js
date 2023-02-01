@@ -27,6 +27,7 @@ export class App extends Component {
 
 		for (const fileOutput of FILE_OUTPUTS) {
 			this.state[fileOutput.id + 'Text'] = undefined;
+			this.state[fileOutput.id + 'Full'] = undefined;
 			this.state[fileOutput.id + 'Download'] = fileOutput.download;
 		}
 
@@ -166,11 +167,68 @@ export class App extends Component {
 
 					if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
 						const allTransitions = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/all_state_transitions.txt'));
-						this.setState({allTransitionsText: allTransitions})
+						const allTransitionsSplit = allTransitions.split('\n');
+						let individualsCount = 0;
+						let individuals = {};
+						let stateTransitionsCount = {};
+						
+						for (let i = 0; i < allTransitionsSplit.length; i++) {
+							if (allTransitionsSplit[i].includes('None')) {
+								individualsCount++;
+							} else {
+								const lineSplit = allTransitionsSplit[i].split('\t');
+								individuals[lineSplit[0]] = lineSplit[2];
+								if (stateTransitionsCount[lineSplit[1]] === undefined) {
+									stateTransitionsCount[lineSplit[1]] = {};
+								}
+								if (stateTransitionsCount[lineSplit[1]][lineSplit[2]] === undefined) {
+									stateTransitionsCount[lineSplit[1]][lineSplit[2]] = 0;
+								}
+								stateTransitionsCount[lineSplit[1]][lineSplit[2]]++;
+							}
+						}
+						delete individuals[""];
+						delete stateTransitionsCount[undefined];
+
+						let individualsSummary = "Final States of Individuals:\n";
+						let states = {};
+						for (const [key, value] of Object.entries(individuals)) {
+							if (states[value] === undefined) {
+								states[value] = 0;
+							}
+							states[value]++;
+						}
+						for (const [key, value] of Object.entries(states)) {
+							individualsSummary += key + ': ' + value + '\n';
+						}
+						individualsSummary += '\n';
+						
+						let stateTransitionsSummary = "State Transitions Summary:\n";
+						for (const [initialState, finalStates] of Object.entries(stateTransitionsCount)) {
+							for (const [finalState, count] of Object.entries(finalStates)) {
+								stateTransitionsSummary += initialState + ' to ' + finalState + ': ' + count + '\n';
+							}
+						}
+						stateTransitionsSummary += '\n';
+
+						const totalTransitionsCount = allTransitionsSplit.length - individualsCount - 1;
+
+						const allTransitionsText = 'Total number of state transitions: ' + totalTransitionsCount + '\n\n' + individualsSummary + stateTransitionsSummary;
+						this.setState({allTransitionsText, allTransitionsFull: allTransitions})
 					}
 		
 					const transmissionNetwork = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
-					this.setState({transmissionNetworkText: transmissionNetwork})
+					// summarize transmission network
+					const transmissionNetworkSplit = transmissionNetwork.split('\n');
+					let transmissionEventsCount = 0;
+					for (let i = transmissionNetworkSplit.length - 1; i >= 0; i--) {
+						if (transmissionNetworkSplit[i].startsWith('None')) {
+							break;
+						}
+						transmissionEventsCount++;
+					}
+					const transmissionNetworkText = `Total number of (non-seed) transmission events: ${transmissionEventsCount}\nTotal number of infected individuals: ${transmissionNetworkSplit.length}`;
+					this.setState({transmissionNetworkText, transmissionNetworkFull: transmissionNetwork})
 				}
 			}, 500)
 		})
@@ -224,7 +282,7 @@ export class App extends Component {
 		else {
 			const input = document.getElementById(id);
 			const inputData = NUMBER_INPUTS.find(input => input.id === id);
-			if ((input.value === "" && !inputData.required) || (input.value !== "" && parseInt(input.value) >= 0)) {
+			if ((input.value === "" && !inputData.required) || (input.value !== "" && parseFloat(input.value) > 0)) {
 				input.classList.remove("border");
 				input.classList.remove("border-danger");
 				return true;
@@ -242,8 +300,12 @@ export class App extends Component {
 
 	downloadResults = () => {
 		for (const fileOutput of FILE_OUTPUTS) {
-			if (this.state[fileOutput.id + "Text"] && this.state[fileOutput.id + "Text"] !== "" && this.state[fileOutput.id + "Download"]) {
-				saveAs(new Blob([this.state[fileOutput.id + "Text"]]), fileOutput.id + ".txt");
+			if (this.state[fileOutput.id + "Text"]?.length > 0 && this.state[fileOutput.id + "Download"]) {
+				if ((this.state[fileOutput.id + "Full"]?.length > 0)) {
+					saveAs(new Blob([this.state[fileOutput.id + "Full"]]), fileOutput.id + ".txt");
+				} else {
+					saveAs(new Blob([this.state[fileOutput.id + "Text"]]), fileOutput.id + ".txt");
+				}
 			}
 		}
 	}
@@ -288,6 +350,8 @@ export class App extends Component {
 					validInput={this.validInput}
 					fileText={this.state[input.id + FILE_INPUTS_SUFFIX]}
 					setFileText={this.setFileText}
+					preview={input.preview}
+					summary={input.summary}
 					/>)}
 				</div>
 				<div className="d-flex flex-wrap justify-content-center w-100">
