@@ -9,24 +9,40 @@ export const FILE_INPUTS = [
         label: "Contact Network", 
         exampleFile: "https://raw.githubusercontent.com/niemasd/GEMF/master/example/contact_network_complete.tsv",
         pyodideFileName: "contact_network.tsv",
+        summary: (text) => {
+            const splitText = text.split('\n');
+            let nodeCount = 0;
+            let edgeCount = 0;
+            for (let i = 0; i < splitText.length; i++) {
+                if (splitText[i].startsWith('NODE')) {
+                    nodeCount++;
+                } else if (splitText[i].startsWith('EDGE')) {
+                    edgeCount++;
+                }
+            }
+            return `Number of Nodes: ${nodeCount} \nNumber of Edges: ${edgeCount}`;
+        },
     },
     {
         id: "initialStates",
         label: "Initial States",
         exampleFile: "https://raw.githubusercontent.com/niemasd/GEMF/master/example/initial_states_seir.tsv",
         pyodideFileName: "initial_states.tsv",
+        preview: true,
     }, 
     {
         id: "infectedStates",
         label: "Infected States",
         exampleFile: "https://raw.githubusercontent.com/niemasd/GEMF/master/example/infected_states_seir.txt",
         pyodideFileName: "infected_states.txt",
+        preview: true,
     },
     {
         id: 'rates',
         label: "Rates",
         exampleFile: "https://raw.githubusercontent.com/niemasd/GEMF/master/example/rates_seir.tsv",
         pyodideFileName: "rates.tsv",
+        preview: true,
     }
 ]
 export const NUMBER_INPUTS = [
