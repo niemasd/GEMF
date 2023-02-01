@@ -19,7 +19,7 @@ export class FileInput extends Component {
         const fileReader = new FileReader();
         fileReader.onload = (e) => {
             if (this.props.summary) { 
-                this.props.setFileText(this.props.id, this.props.summary(e.target.result));
+                this.props.setFileText(this.props.id, e.target.result, this.props.summary(e.target.result));
             } else {
                 this.props.setFileText(this.props.id, e.target.result);
             }
@@ -41,11 +41,11 @@ export class FileInput extends Component {
             return '';
         }
 
-        if (this.props.fileText.length <= 1000) {
+        if (this.props.fileText.length <= 10000) {
             return this.props.fileText;
         }
 
-        return `${this.props.fileText.substring(0, 1000)} ...\n1,000 characters displayed, ${this.props.fileText.length - 1000} characters more`;
+        return `${this.props.fileText.substring(0, 10000)} ...\n10,000 characters displayed, ${this.props.fileText.length - 10000} characters more`;
     }
 
     render() {

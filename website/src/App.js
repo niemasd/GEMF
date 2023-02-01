@@ -8,7 +8,7 @@ import CheckboxInput from './components/CheckboxInput'
 import TextOutput from './components/TextOutput'
 import HelpGuide from './components/HelpGuide'
 
-import { SITE_HOST, FILE_INPUTS, FILE_OUTPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS, PATH_TO_PYODIDE_ROOT, FILE_INPUTS_SUFFIX } from './Constants'
+import { SITE_HOST, FILE_INPUTS, FILE_OUTPUTS, NUMBER_INPUTS, CHECKBOX_INPUTS, PATH_TO_PYODIDE_ROOT } from './Constants'
 import './App.scss';
 import 'github-markdown-css/github-markdown-light.css'
 
@@ -22,7 +22,8 @@ export class App extends Component {
 		}
 
 		for (const fileInput of FILE_INPUTS) {
-			this.state[fileInput.id + FILE_INPUTS_SUFFIX] = undefined;
+			this.state[fileInput.id + "Text"] = undefined;
+			this.state[fileInput.id + "Data"] = undefined;
 		}
 
 		for (const fileOutput of FILE_OUTPUTS) {
@@ -84,6 +85,7 @@ export class App extends Component {
 		const newState = {};
 		for (const fileOutput of FILE_OUTPUTS) {
 			newState[fileOutput.id + "Text"] = '';
+			newState[fileOutput.id + "Data"] = '';
 		}
 		this.setState(newState)
 
@@ -136,8 +138,8 @@ export class App extends Component {
 	
 			// creating appropriate files to run GEMF_FAVITES
 			for (const fileInput of FILE_INPUTS) {
-				if (this.state[fileInput.id + FILE_INPUTS_SUFFIX]) {
-					pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileInput.pyodideFileName, this.state[fileInput.id + FILE_INPUTS_SUFFIX]);
+				if (this.state[fileInput.id + "Data"]) {
+					pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + fileInput.pyodideFileName, this.state[fileInput.id + "Data"]);
 					this.logMessage("Writing " + fileInput.label + " to Pyodide...");
 					fileCounter++;
 				} else {
@@ -268,7 +270,7 @@ export class App extends Component {
 		// checking if file is valid
 		if (FILE_INPUTS.map(input => input.id).includes(id)) {
 			const input = document.getElementById(id);
-			if (input !== "" || this.state[id + FILE_INPUTS_SUFFIX]) {
+			if (input !== "" || this.state[id + "Data"]) {
 				input.classList.remove("border");
 				input.classList.remove("border-danger");
 				return true;
@@ -300,11 +302,11 @@ export class App extends Component {
 
 	downloadResults = () => {
 		for (const fileOutput of FILE_OUTPUTS) {
-			if (this.state[fileOutput.id + "Text"]?.length > 0 && this.state[fileOutput.id + "Download"]) {
+			if (this.state[fileOutput.id + "Data"]?.length > 0 && this.state[fileOutput.id + "Download"]) {
 				if ((this.state[fileOutput.id + "Full"]?.length > 0)) {
 					saveAs(new Blob([this.state[fileOutput.id + "Full"]]), fileOutput.id + ".txt");
 				} else {
-					saveAs(new Blob([this.state[fileOutput.id + "Text"]]), fileOutput.id + ".txt");
+					saveAs(new Blob([this.state[fileOutput.id + "Data"]]), fileOutput.id + ".txt");
 				}
 			}
 		}
@@ -318,13 +320,19 @@ export class App extends Component {
 				for (const fileInput of FILE_INPUTS) {
 					document.getElementById(fileInput.id).value = null;
 				}
-				this.setState({[fileInput.id + FILE_INPUTS_SUFFIX]: text})
+				
+				if (fileInput.summary) {
+					this.setFileText(fileInput.id, text, fileInput.summary(text));
+				} else {
+					this.setFileText(fileInput.id, text);
+				}
 			})
 		}
 	}
 
-	setFileText = (id, text) => {
-		this.setState({[id + FILE_INPUTS_SUFFIX]: text});
+	setFileText = (id, text, summary) => {
+		this.setState({[id + "Text"]: summary ?? text});
+		this.setState({[id + "Data"]: text});
 	}
 
 	toggleDownloadFile = (id) => {
@@ -348,7 +356,7 @@ export class App extends Component {
 					id={input.id}
 					label={input.label}
 					validInput={this.validInput}
-					fileText={this.state[input.id + FILE_INPUTS_SUFFIX]}
+					fileText={this.state[input.id + "Text"]}
 					setFileText={this.setFileText}
 					preview={input.preview}
 					summary={input.summary}

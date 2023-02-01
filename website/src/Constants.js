@@ -2,7 +2,6 @@
 export const SITE_HOST = window.location.href.includes("https") ? "https://daniel-ji.github.io/GEMF/" : "http://localhost:3000/";
 // directory for where pyodide writes files 
 export const PATH_TO_PYODIDE_ROOT = "/home/pyodide/";
-export const FILE_INPUTS_SUFFIX = "Data";
 export const FILE_INPUTS = [
     {
         id: "contactNetwork",
@@ -29,6 +28,24 @@ export const FILE_INPUTS = [
         exampleFile: "https://raw.githubusercontent.com/niemasd/GEMF/master/example/initial_states_seir.tsv",
         pyodideFileName: "initial_states.tsv",
         preview: true,
+        summary: (text) => {
+            const splitText = text.split('\n');
+            const states = {};
+            for (let i = 0; i < splitText.length; i++) {
+                const splitLine = splitText[i].split('\t');
+                if (states[splitLine[1]] === undefined) {
+                    states[splitLine[1]] = 0;
+                }
+                states[splitLine[1]]++;
+            }
+            delete states[undefined];
+            
+            let summaryText = "";
+            for (const [key, value] of Object.entries(states)) {
+                summaryText += 'Individuals with state ' + key + ': ' + value + '\n';
+            }
+            return summaryText;
+        },
     }, 
     {
         id: "infectedStates",
