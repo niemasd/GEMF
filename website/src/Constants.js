@@ -29,6 +29,7 @@ export const FILE_INPUTS = [
         pyodideFileName: "initial_states.tsv",
         summary: (text) => {
             const splitText = text.split('\n');
+            splitText.pop();
             const states = {};
             for (let i = 0; i < splitText.length; i++) {
                 const splitLine = splitText[i].split('\t');
@@ -37,7 +38,6 @@ export const FILE_INPUTS = [
                 }
                 states[splitLine[1]]++;
             }
-            delete states[undefined];
             
             let summaryText = "";
             for (const [key, value] of Object.entries(states)) {
@@ -101,12 +101,12 @@ export const FILE_OUTPUTS = [
     },
     {
         id: 'transmissionNetwork',
-        label: 'Transmission Network Results',
+        label: 'Transmission Network Results (Preview)',
         download: true,
     },
     {
         id: 'allTransitions',
-        label: 'All State Transitions Results',
+        label: 'All State Transitions Results (Preview)',
         download: true
     }
 ]
