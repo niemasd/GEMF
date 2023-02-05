@@ -170,6 +170,7 @@ export class App extends Component {
 					if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
 						const allTransitions = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/all_state_transitions.txt'));
 						const allTransitionsSplit = allTransitions.split('\n');
+						allTransitionsSplit.pop();
 						let individualsCount = 0;
 						let individuals = {};
 						let stateTransitionsCount = {};
@@ -189,10 +190,8 @@ export class App extends Component {
 								stateTransitionsCount[lineSplit[1]][lineSplit[2]]++;
 							}
 						}
-						delete individuals[""];
-						delete stateTransitionsCount[undefined];
 
-						let individualsSummary = "Final States of Individuals:\n";
+						let individualsSummary = "Final States of (Transitioned) Individuals:\n";
 						let states = {};
 						for (const [key, value] of Object.entries(individuals)) {
 							if (states[value] === undefined) {
@@ -213,7 +212,7 @@ export class App extends Component {
 						}
 						stateTransitionsSummary += '\n';
 
-						const totalTransitionsCount = allTransitionsSplit.length - individualsCount - 1;
+						const totalTransitionsCount = allTransitionsSplit.length - individualsCount;
 
 						const allTransitionsText = 'Total number of state transitions: ' + totalTransitionsCount + '\n\n' + individualsSummary + stateTransitionsSummary;
 						this.setState({allTransitionsText, allTransitionsFull: allTransitions})
@@ -222,6 +221,7 @@ export class App extends Component {
 					const transmissionNetwork = new TextDecoder().decode(pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + '/output/transmission_network.txt'));
 					// summarize transmission network
 					const transmissionNetworkSplit = transmissionNetwork.split('\n');
+					transmissionNetworkSplit.pop();
 					let transmissionEventsCount = 0;
 					for (let i = transmissionNetworkSplit.length - 1; i >= 0; i--) {
 						if (transmissionNetworkSplit[i].startsWith('None')) {
