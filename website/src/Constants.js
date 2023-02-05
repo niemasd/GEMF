@@ -27,7 +27,6 @@ export const FILE_INPUTS = [
         label: "Initial States",
         exampleFile: "https://raw.githubusercontent.com/niemasd/GEMF/master/example/initial_states_seir.tsv",
         pyodideFileName: "initial_states.tsv",
-        preview: true,
         summary: (text) => {
             const splitText = text.split('\n');
             const states = {};
