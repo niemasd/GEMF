@@ -47,7 +47,7 @@ export class App extends Component {
 						const FS = this.state.gemfModule.FS;
 						const pyodide = this.state.pyodide;
 						const finalResults = new TextDecoder().decode(FS.readFile('output.txt'));
-						this.setState({finalResultsText: finalResults})
+						this.setState({finalResultsText: finalResults, finalResultsFull: finalResults})
 						this.logMessage("Writing output from GEMF WASM to Pyodide..." )
 						pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + "/output/output.txt", finalResults);
 					}
@@ -302,7 +302,8 @@ export class App extends Component {
 
 	downloadResults = () => {
 		for (const fileOutput of FILE_OUTPUTS) {
-			if (this.state[fileOutput.id + "Data"]?.length > 0 && this.state[fileOutput.id + "Download"]) {
+			console.log()
+			if (this.state[fileOutput.id + "Full"]?.length > 0 && this.state[fileOutput.id + "Download"]) {
 				if ((this.state[fileOutput.id + "Full"]?.length > 0)) {
 					saveAs(new Blob([this.state[fileOutput.id + "Full"]]), fileOutput.id + ".txt");
 				} else {
