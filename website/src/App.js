@@ -19,6 +19,7 @@ export class App extends Component {
 		this.state = {
 			pyodide: undefined,
 			gemfModule: undefined,
+			timeElapsed: undefined,
 		}
 
 		for (const fileInput of FILE_INPUTS) {
@@ -41,7 +42,7 @@ export class App extends Component {
 			this.logMessage("Initializing GEMF...")
 			window.createModule({
 				print: (text) => {
-					this.logMessage("GEMF stdout: \t" + text)
+					this.logMessage(text, "GEMF stdout: \t")
 					// on GEMF finish
 					if (text.includes("simulation success!")) {
 						const FS = this.state.gemfModule.FS;
@@ -53,7 +54,7 @@ export class App extends Component {
 					}
 				},
 				printErr: (text) => {
-					this.logMessage("GEMF stderr: \t" + text)
+					this.logMessage(text, "GEMF stderr: \t")
 				}
 			}).then((Module) => {
 				this.setState({gemfModule: Module}, resolve)
@@ -67,10 +68,10 @@ export class App extends Component {
 			this.setState({pyodide: await window.loadPyodide({
 				indexURL : "https://cdn.jsdelivr.net/pyodide/v0.22.0/full/",
 				stdout: (text) => {
-					this.logMessage("GEMF_FAVITES stdout: " + text)
+					this.logMessage(text, "GEMF_FAVITES stdout: ", true)
 				},
 				stderr: (text) => {
-					this.logMessage("GEMF_FAVITES stderr: " + text)
+					this.logMessage(text, "GEMF_FAVITES stderr: ", true)
 				}
 			})}, resolve);
 		})
@@ -80,6 +81,10 @@ export class App extends Component {
 		if (!this.allInputsValid()) {
 			return;
 		}
+		
+		const startTime = Date.now();
+
+		this.setState({timeElapsed: undefined})
 
 		// reset text / output
 		const newState = {};
@@ -164,7 +169,7 @@ export class App extends Component {
 					try {
 						pyodide.runPython(await (await fetch(SITE_HOST + "GEMF_FAVITES_WEB.py")).text())
 					}  catch (e) {
-						this.logMessage("GEMF_FAVITES stderr: \t" + e)
+						this.logMessage(e, "GEMF_FAVITES stderr: ")
 					}
 
 					if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + '/output').includes('all_state_transitions.txt')) {
@@ -230,7 +235,7 @@ export class App extends Component {
 						transmissionEventsCount++;
 					}
 					const transmissionNetworkText = `Total number of (non-seed) transmission events: ${transmissionEventsCount}\nTotal number of infected individuals: ${transmissionNetworkSplit.length}`;
-					this.setState({transmissionNetworkText, transmissionNetworkFull: transmissionNetwork})
+					this.setState({transmissionNetworkText, transmissionNetworkFull: transmissionNetwork, timeElapsed: (Date.now() - startTime) / 1000})
 				}
 			}, 500)
 		})
@@ -296,8 +301,22 @@ export class App extends Component {
 		}
 	}
 
-	logMessage = (message) => {
-		this.setState(prevState => ({consoleText: prevState.consoleText += message + "\n"}))
+	logMessage = (message, prefix = "", fromFAVITES = false) => {
+		const date = new Date();
+		const dateStr =
+		("00" + (date.getMonth() + 1)).slice(-2) + "-" +
+		("00" + date.getDate()).slice(-2) + "-" +
+		date.getFullYear() + " " +
+		("00" + date.getHours()).slice(-2) + ":" +
+		("00" + date.getMinutes()).slice(-2) + ":" +
+		("00" + date.getSeconds()).slice(-2);
+		const timeStamp = "[" + dateStr + "] ";
+		if (fromFAVITES) {
+			const splitMessage = message.substring(message.indexOf(']')+2); 
+			this.setState(prevState => ({consoleText: prevState.consoleText += timeStamp + prefix + splitMessage + "\n"}))
+		} else {
+			this.setState(prevState => ({consoleText: prevState.consoleText += timeStamp + prefix + message + "\n"}))
+		}
 	}
 
 	downloadResults = () => {
@@ -390,7 +409,8 @@ export class App extends Component {
 				<button type="button" className="btn btn-success mx-3" onClick={this.downloadResults}>Download Results</button>
 				<button type="button" className="btn btn-secondary mx-3" onClick={this.goToAbout}>About This Tool</button>
 			</div>
-			<div id="output-container" className="d-flex flex-wrap justify-content-around mt-5 mb-5 w-100">
+			<h5 className="mt-3">Total Runtime: {this.state.timeElapsed !== undefined && this.state.timeElapsed + ' seconds'}</h5>
+			<div id="output-container" className="d-flex flex-wrap justify-content-around mt-3 mb-5 w-100">
 				{FILE_OUTPUTS.map(fileOutput => 
 				<TextOutput 
 				key={fileOutput.id}
