@@ -65,16 +65,45 @@ export class App extends Component {
 	initializePyodide = () => {
 		return new Promise(async (resolve, reject) => {
 			this.logMessage("Initializing Pyodide...")
-			this.setState({pyodide: await window.loadPyodide({
-				indexURL : "https://cdn.jsdelivr.net/pyodide/v0.22.0/full/",
-				stdout: (text) => {
-					this.logMessage(text, "GEMF_FAVITES stdout: ", true)
-				},
-				stderr: (text) => {
-					this.logMessage(text, "GEMF_FAVITES stderr: ", true)
-				}
-			})}, resolve);
+			if (this.state.pyodide === undefined) {
+				this.setState({pyodide: await window.loadPyodide({
+					indexURL : "https://cdn.jsdelivr.net/pyodide/v0.22.0/full/",
+					stdout: (text) => {
+						this.logMessage(text, "GEMF_FAVITES stdout: ", true)
+					},
+					stderr: (text) => {
+						this.logMessage(text, "GEMF_FAVITES stderr: ", true)
+					}
+				})}, resolve);
+			} else {
+				resolve();
+			}
 		})
+	}
+
+	deleteFolder = (path, inPyodide = true, onlyContents = true) => {
+		const FS = inPyodide ? this.state.pyodide.FS : this.state.gemfModule.FS; 
+
+		if (!FS.analyzePath(path).object.isFolder) {
+			return;
+		}
+
+		for (const file of FS.readdir(path)) {
+			if (file === "." || file === "..") {
+				continue; 
+			}
+
+			if (FS.analyzePath(path + file).object.isFolder) {
+				this.deleteFolder(path + file + "/", inPyodide, false);
+				continue;
+			}
+
+			FS.unlink(path + file);
+		}
+
+		if (!onlyContents) {
+			FS.rmdir(path);
+		}
 	}
 
 	async runGEMFFavites() {
@@ -100,19 +129,9 @@ export class App extends Component {
 			const FS = this.state.gemfModule.FS;
 			const pyodide = this.state.pyodide;
 
-			if (pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT).includes("output")) {
-				for (const file of pyodide.FS.readdir(PATH_TO_PYODIDE_ROOT + "output")) {
-					if (file === "." || file === "..") {
-						continue; 
-					}
-					pyodide.FS.unlink(PATH_TO_PYODIDE_ROOT + "output/" + file);
-				}
-				pyodide.FS.rmdir(PATH_TO_PYODIDE_ROOT + "output")
-				FS.unlink("para.txt")
-				FS.unlink("status.txt")
-				FS.unlink("network.txt")
-			}
-	
+			this.deleteFolder(PATH_TO_PYODIDE_ROOT);
+			console.log(this.state.gemfModule);
+
 			// sets args variable, which will replace sys.argv when running GEMF_FAVITES on the browser
 			let args = './GEMF_FAVITES.py -c contact_network.tsv -s initial_states.tsv -i infected_states.txt -r rates.tsv -o output';
 			// add time argument
@@ -236,6 +255,8 @@ export class App extends Component {
 					}
 					const transmissionNetworkText = `Total number of (non-seed) transmission events: ${transmissionEventsCount}\nTotal number of infected individuals: ${transmissionNetworkSplit.length}`;
 					this.setState({transmissionNetworkText, transmissionNetworkFull: transmissionNetwork, timeElapsed: (Date.now() - startTime) / 1000})
+
+					this.logMessage('Done!');
 				}
 			}, 500)
 		})
@@ -254,6 +275,11 @@ export class App extends Component {
 			this.logMessage("Copying GEMF WASM files to Pyodide...")
 
 			this.state.gemfModule.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
+
+			FS.unlink("para.txt");
+			FS.unlink("network.txt");
+			FS.unlink("status.txt");
+			FS.unlink("output.txt");
 		} catch (err) {
 			console.log(err);
 		}
@@ -321,7 +347,6 @@ export class App extends Component {
 
 	downloadResults = () => {
 		for (const fileOutput of FILE_OUTPUTS) {
-			console.log()
 			if (this.state[fileOutput.id + "Full"]?.length > 0 && this.state[fileOutput.id + "Download"]) {
 				if ((this.state[fileOutput.id + "Full"]?.length > 0)) {
 					saveAs(new Blob([this.state[fileOutput.id + "Full"]]), fileOutput.id + ".txt");
