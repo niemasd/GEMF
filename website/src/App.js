@@ -65,19 +65,19 @@ export class App extends Component {
 	initializePyodide = () => {
 		return new Promise(async (resolve, reject) => {
 			this.logMessage("Initializing Pyodide...")
-			if (this.state.pyodide === undefined) {
-				this.setState({pyodide: await window.loadPyodide({
-					indexURL : "https://cdn.jsdelivr.net/pyodide/v0.22.0/full/",
-					stdout: (text) => {
-						this.logMessage(text, "GEMF_FAVITES stdout: ", true)
-					},
-					stderr: (text) => {
-						this.logMessage(text, "GEMF_FAVITES stderr: ", true)
-					}
-				})}, resolve);
-			} else {
-				resolve();
+			if (this.state.pyodide) {
+				return resolve();
 			}
+
+			this.setState({pyodide: await window.loadPyodide({
+				indexURL : "https://cdn.jsdelivr.net/pyodide/v0.22.0/full/",
+				stdout: (text) => {
+					this.logMessage(text, "GEMF_FAVITES stdout: ", true)
+				},
+				stderr: (text) => {
+					this.logMessage(text, "GEMF_FAVITES stderr: ", true)
+				}
+			})}, resolve);
 		})
 	}
 
@@ -130,7 +130,6 @@ export class App extends Component {
 			const pyodide = this.state.pyodide;
 
 			this.deleteFolder(PATH_TO_PYODIDE_ROOT);
-			console.log(this.state.gemfModule);
 
 			// sets args variable, which will replace sys.argv when running GEMF_FAVITES on the browser
 			let args = './GEMF_FAVITES.py -c contact_network.tsv -s initial_states.tsv -i infected_states.txt -r rates.tsv -o output';
@@ -257,6 +256,7 @@ export class App extends Component {
 					this.setState({transmissionNetworkText, transmissionNetworkFull: transmissionNetwork, timeElapsed: (Date.now() - startTime) / 1000})
 
 					this.logMessage('Done!');
+					this.setState({gemfModule: undefined});
 				}
 			}, 500)
 		})
@@ -339,9 +339,9 @@ export class App extends Component {
 		const timeStamp = "[" + dateStr + "] ";
 		if (fromFAVITES) {
 			const splitMessage = message.substring(message.indexOf(']')+2); 
-			this.setState(prevState => ({consoleText: prevState.consoleText += timeStamp + prefix + splitMessage + "\n"}))
+			this.setState(prevState => ({consoleText: (prevState.consoleText ?? '') + timeStamp + prefix + splitMessage + "\n"}))
 		} else {
-			this.setState(prevState => ({consoleText: prevState.consoleText += timeStamp + prefix + message + "\n"}))
+			this.setState(prevState => ({consoleText: (prevState.consoleText ?? '') + timeStamp + prefix + message + "\n"}))
 		}
 	}
 
