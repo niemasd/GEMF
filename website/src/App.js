@@ -274,7 +274,7 @@ export class App extends Component {
 			FS.writeFile("status.txt", pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/status.txt"));
 			this.logMessage("Copying GEMF WASM files to Pyodide...")
 
-			this.state.gemfModule.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
+			this.state.gemfModule.callMain([0, ""]);
 
 			FS.unlink("para.txt");
 			FS.unlink("network.txt");
@@ -435,6 +435,8 @@ export class App extends Component {
 				<button type="button" className="btn btn-secondary mx-3" onClick={this.goToAbout}>About This Tool</button>
 			</div>
 			<h5 className="mt-3">Total Runtime: {this.state.timeElapsed !== undefined && this.state.timeElapsed + ' seconds'}</h5>
+			<br />
+			<p>Note: Larger contact networks may take longer to run or may make the page unresponsive, please visit <a href="https://github.com/niemasd/GEMF" target="_blank" rel="noreferrer">https://github.com/niemasd/GEMF</a> to setup an environment on a computer to run GEMF.</p>
 			<div id="output-container" className="d-flex flex-wrap justify-content-around mt-3 mb-5 w-100">
 				{FILE_OUTPUTS.map(fileOutput => 
 				<TextOutput 
