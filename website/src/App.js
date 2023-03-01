@@ -274,7 +274,7 @@ export class App extends Component {
 			FS.writeFile("status.txt", pyodide.FS.readFile(PATH_TO_PYODIDE_ROOT + "output/status.txt"));
 			this.logMessage("Copying GEMF WASM files to Pyodide...")
 
-			this.state.gemfModule.callMain([0, ""]);
+			this.state.gemfModule.ccall('run_gemf', 'number', ['number', 'string'], [0, ""]);
 
 			FS.unlink("para.txt");
 			FS.unlink("network.txt");

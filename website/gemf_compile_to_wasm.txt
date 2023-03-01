@@ -1,4 +1,4 @@
 emcc -c common.c
 emcc -c nrm.c
 emcc -c para.c
-emcc gemfc_nrm.c -o website/public/GEMF.js nrm.o para.o common.o -lm -lproxyfs.js -O3 -sEXPORTED_RUNTIME_METHODS=FS -sMODULARIZE -s'EXPORT_NAME="createModule"' -sFORCE_FILESYSTEM=1 -sNO_INVOKE_RUN
+emcc gemfc_nrm.c -o website/public/GEMF.js nrm.o para.o common.o -lm -lproxyfs.js -O3 -sEXPORTED_FUNCTIONS=_run_gemf -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,FS -sMODULARIZE -s'EXPORT_NAME="createModule"' -sFORCE_FILESYSTEM=1 -sNO_INVOKE_RUN -DGEMFWASM 
