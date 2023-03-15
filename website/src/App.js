@@ -391,7 +391,7 @@ export class App extends Component {
   	render() {
 		return (
 		<div className="App d-flex flex-column align-items-center">
-			<h1 className="my-5 text-center">GEMF_FAVITES Online Tool</h1>
+			<h1 className="my-5 text-center">GEMF_FAVITES_WASM</h1>
 			
 			<div id="input-container" className="d-flex flex-column align-items-center">
 				<div className="d-flex flex-wrap justify-content-center w-100">
