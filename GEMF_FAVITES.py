@@ -9,13 +9,13 @@ from datetime import datetime
 from json import dump as jdump
 from os import chdir, getcwd, makedirs
 from os.path import abspath, expanduser, isdir, isfile
-from subprocess import call
 import argparse
 import random
+import subprocess
 import sys
 
 # useful variables
-VERSION = '1.0.3'
+VERSION = '1.0.4'
 C_UINT_MAX = 4294967295
 
 # defaults
@@ -360,7 +360,7 @@ def run_gemf(outdir, log_fn, gemf_path=DEFAULT_GEMF_PATH):
     '''
     orig_dir = getcwd()
     chdir(outdir)
-    log_f = open(log_fn, 'w'); call([gemf_path], stdout=log_f); log_f.close()
+    log_f = open(log_fn, 'w'); subprocess.call([gemf_path], stdout=log_f); log_f.close()
     chdir(orig_dir)
     return log_f
 
