@@ -176,7 +176,7 @@ export class App extends Component {
 				}
 			}
 			FS.writeFile('output.txt', '');
-			pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch("https://raw.githubusercontent.com/niemasd/GEMF/master/GEMF_FAVITES.py")).text(), {encoding: "utf8"});
+			pyodide.FS.writeFile(PATH_TO_PYODIDE_ROOT + 'GEMF_FAVITES.py', await (await fetch("https://raw.githubusercontent.com/daniel-ji/GEMF/master/GEMF_FAVITES.py")).text(), {encoding: "utf8"});
 	
 			// run GEMF_FAVITES 
 			const runPython = setInterval(async () => {
